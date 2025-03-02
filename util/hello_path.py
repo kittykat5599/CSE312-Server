@@ -553,12 +553,12 @@ def specCharReplace(data):
     data = data.replace("%24", "$")
     data = data.replace("%25", "%")
     data = data.replace("%5E", "^")
-    data = data.replace("%26", "&")
     data = data.replace("%28", "(")
     data = data.replace("%29", ")")
     data = data.replace("%2D", "-")
     data = data.replace("%5F", "_")
     data = data.replace("%3D", "=")
+    data = data.replace("%26", "&")
     return data
 
 def registration(request,handler):
@@ -682,6 +682,7 @@ def me(request, handler):
             handler.request.sendall(res.to_data())
             return
     else:
+        d = {}
         d["username"] = ""
         d["id"] = ""
         res.set_status(401,"Unauthorized")

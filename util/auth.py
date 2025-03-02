@@ -12,12 +12,14 @@ def escapeContents(data):
 def extract_credentials(request):
     data = request.body.decode("utf-8")
     split = data.split("&")
+
     user_pass = {}
     for users in split:
         user_password = users.split("=")
         user_pass[str(user_password[0])] = escapeContents(user_password[1])
     username = user_pass["username"]
     password = user_pass["password"]
+
     return [username, password]
 
 def validate_password(password):
