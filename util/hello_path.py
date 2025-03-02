@@ -556,6 +556,7 @@ def registration(request,handler):
         res.set_status(400,"Bad Request")
         handler.request.sendall(res.to_data())
         return
+    '''
     usernames = {}
     usernames["username"] = user
     check = userPass_collection.find_one(usernames)
@@ -563,7 +564,7 @@ def registration(request,handler):
         res.set_status(400,"Bad Request")
         handler.request.sendall(res.to_data())
         return
-    
+    '''
     user_pass = {}
     user_pass["password"] = bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode("utf-8")
     user_pass["username"] = user
