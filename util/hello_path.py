@@ -1,4 +1,11 @@
 from util.response import Response
+from util.database import chat_collection, session_collection, reaction_collection, userPass_collection, userAuth_collection
+import uuid
+import json
+import requests
+import bcrypt
+from util.auth import validate_password, extract_credentials
+import hashlib
 
 
 # This path is provided as an example of how to use the router
@@ -6,3 +13,755 @@ def hello_path(request, handler):
     res = Response()
     res.text("hello")
     handler.request.sendall(res.to_data())
+
+def escapeContents(data):
+    data = data.replace("&","&amp;")
+    data = data.replace("<","&lt;")
+    data = data.replace(">","&gt;")
+    return data
+
+def home(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/index.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def chat(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/chat.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def public(request, handler):
+    file_path = "public" + request.path[len("/public"):]
+    mime_type = "application/octet-stream"
+
+    # Manually mapping file extensions to MIME types
+    ext = file_path.split('.')[-1].lower()
+    mime_map = {
+        "html": "text/html",
+        "css": "text/css",
+        "js": "application/javascript",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "ico": "image/x-icon",
+        "gif": "image/gif",
+        "svg": "image/svg+xml"
+    }
+    
+    # If we know the extension, set the correct MIME type
+    if ext in mime_map:
+        mime_type = mime_map[ext]
+    with open(file_path, 'rb') as f:
+        content = f.read()
+        res = Response()
+        head={}
+        head["Content-Type"] = mime_type
+        head["X-Content-Type-Options"] = "nosniff"
+        res.headers(head)
+        res.bytes(content) 
+        handler.request.sendall(res.to_data())
+
+def getC(request, handler):
+    message = list(chat_collection.find())
+    dictMes = {}
+    mesL=[]
+    for mess in message:
+        d = {}
+        d["author"] = mess["author"]
+        check = session_collection.find_one(d)
+        if check is None:
+            profile_pic = requests.get("https://api.dicebear.com/9.x/thumbs/svg?seed=" + str(uuid.uuid4()))
+            profURL = "public/imgs/profile-pics/" + str(uuid.uuid4()) + ".svg"
+            with open(profURL, "wb") as file:
+                file.write(profile_pic.content)
+            c = {}
+            c["nickname"] = mess["author"]
+            c["author"] = mess["author"]
+            c["imageURL"] = profURL
+            session_collection.insert_one(c)
+        auth = session_collection.find_one(d).get("nickname", mess["author"])
+        prof = session_collection.find_one(d).get("imageURL", mess["author"])
+        c = {}
+        c["id"] = mess["id"]
+        reactions = reaction_collection.find(c)
+        a = {}
+        
+        for recUser in reactions:
+            if recUser["reactions"] in a:
+                a[recUser["reactions"]].append(recUser["author"])
+            else:
+                a[recUser["reactions"]] = [recUser["author"]]
+            
+    
+        mesForm = {
+            "author":mess["author"],
+            "id":mess["id"],
+            "content": mess["content"],
+            "updated":mess["updated"],
+            "reactions":a,
+            "nickname":auth,
+            "imageURL":prof
+        }
+        mesL.append(mesForm)
+    dictMes["messages"] = mesL
+
+    res = Response()
+    res.json(dictMes)
+    handler.request.sendall(res.to_data())
+    
+def postC(request, handler):
+    res = Response()
+    data = json.loads(request.body.decode("utf-8"))
+    con = escapeContents(data.get("content"))
+    if "auth_token" in request.cookies:
+            auth_token = request.cookies["auth_token"]
+            hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+            i = {}
+            i["auth_token"] = hash_auth
+            userID = userAuth_collection.find_one(i).get("id")
+            filter = {}
+            filter["id"] = userID
+            auth = userPass_collection.find_one(filter).get("username")
+    elif "session" in request.cookies:
+        auth = request.cookies["session"]
+    else:
+        profile_pic = requests.get("https://api.dicebear.com/9.x/thumbs/svg?seed=" + str(uuid.uuid4()))
+        profURL = "public/imgs/profile-pics/" + str(uuid.uuid4()) + ".svg"
+        with open(profURL, "wb") as file:
+            file.write(profile_pic.content)
+        
+        auth = str(uuid.uuid4())
+        cookie={}
+        cookie["session"] = auth + ";max-age=99999999999;HttpOnly" 
+        res.cookies(cookie)
+        d = {}
+        d["author"] = auth
+        d["nickname"] = auth
+        d["imageURL"] = profURL
+        session_collection.insert_one(d)
+    auth_mess = {
+            "author":auth,
+            "id":str(uuid.uuid4()),
+            "content": con,
+            "updated":False
+        }
+    chat_collection.insert_one(auth_mess)
+    res.set_status(200,"OK") 
+    handler.request.sendall(res.to_data())
+
+def deleteC(request, handler):
+    res = Response()
+    messageid = request.path.split("/")[-1]
+    if "auth_token" in request.cookies:
+        d = {}
+        d["id"] = messageid
+        chat = chat_collection.find_one(d)
+        if chat is None:
+            res.set_status(404,"Not Found")
+            handler.request.sendall(res.to_data())
+            return
+        auth_token = request.cookies["auth_token"]
+        hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+        i = {}
+        i["auth_token"] = hash_auth
+        userID = userAuth_collection.find_one(i).get("id")
+        filter = {}
+        filter["id"] = userID
+        auth = userPass_collection.find_one(filter).get("username")
+
+        if auth is not None:
+            if (auth) == chat["author"]:
+                chat_collection.delete_one(d)
+                res.set_status(200,"OK")
+                handler.request.sendall(res.to_data())
+                return
+            else:
+                res.set_status(403,"Forbidden")
+                handler.request.sendall(res.to_data())
+                return
+        else:
+            res.set_status(404,"Not Found")
+            handler.request.sendall(res.to_data())
+            return
+    elif "session" in request.cookies:
+        d = {}
+        d["id"] = messageid
+        chat = chat_collection.find_one(d)
+        if chat is None:
+            res.set_status(404,"Not Found")
+            handler.request.sendall(res.to_data())
+            return
+        if (request.cookies["session"]) == chat["author"]:
+            chat_collection.delete_one(d)
+            res.set_status(200,"OK")
+            handler.request.sendall(res.to_data())
+            return
+        else:
+            res.set_status(403,"Forbidden")
+            handler.request.sendall(res.to_data())
+            return
+    else:
+        res.set_status(403,"Forbidden")
+        handler.request.sendall(res.to_data())
+        return
+
+def patchC(request, handler):
+    res = Response()
+    messageid = request.path.split("/")[-1]
+    if "auth_token" in request.cookies:
+        c = {}
+        data = json.loads(request.body.decode("utf-8"))
+        con = escapeContents(data.get("content"))
+        c["content"] = con
+        c["updated"] = True
+        d = {}
+        d["id"] = messageid
+        chat = chat_collection.find_one(d)
+        if chat is None:
+            res.set_status(404,"Not Found")
+            handler.request.sendall(res.to_data())
+            return
+        auth_token = request.cookies["auth_token"]
+        hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+        i = {}
+        i["auth_token"] = hash_auth
+        userID = userAuth_collection.find_one(i).get("id")
+        filter = {}
+        filter["id"] = userID
+        auth = userPass_collection.find(filter).get("username")
+        if auth is not None:
+            if (auth) == chat["author"]:
+                chat_collection.update_one(d,{"$set":c})
+                res.set_status(200,"OK")
+                handler.request.sendall(res.to_data())
+                return
+            else:
+                res.set_status(403,"Forbidden")
+                handler.request.sendall(res.to_data())
+                return
+        else:
+            res.set_status(404,"Not Found")
+            handler.request.sendall(res.to_data())
+            return
+    elif "session" in request.cookies:
+        c = {}
+        data = json.loads(request.body.decode("utf-8"))
+        con = escapeContents(data.get("content"))
+        c["content"] = con
+        c["updated"] = True
+        d = {}
+        d["id"] = messageid
+        chat = chat_collection.find_one(d)
+        if chat is None:
+            res.set_status(404,"Not Found")
+            handler.request.sendall(res.to_data())
+            return
+        if (request.cookies["session"]) == chat["author"]:
+            chat_collection.update_one(d,{"$set":c})
+            res.set_status(200,"OK")
+            handler.request.sendall(res.to_data())
+            return
+        else:
+            res.set_status(403,"Forbidden")
+            handler.request.sendall(res.to_data())
+            return
+    else:
+        res.set_status(403,"Forbidden")
+        handler.request.sendall(res.to_data())
+        return
+    
+def nicknamePatch(request, handler):
+    res = Response()
+    if "auth_token" in request.cookies:
+        auth_token = request.cookies["auth_token"]
+        hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+        i = {}
+        i["auth_token"] = hash_auth
+        userID = userAuth_collection.find_one(i).get("username")
+        filter = {}
+        filter["id"] = userID
+        auth = userPass_collection.find_one(filter).get("username")
+        if auth is not None:
+            c = {}
+            d = {}
+            data = json.loads(request.body.decode("utf-8"))
+            new_nickname = escapeContents(data.get("nickname"))
+            c["nickname"] = new_nickname
+            c["author"] = auth
+            d["author"] = auth
+            if new_nickname:
+                session_collection.update_one(d,{"$set":c}, upsert = True)
+                res.set_status(200,"OK")
+                handler.request.sendall(res.to_data())
+                return
+                
+            else:
+                res.set_status(400,"Bad Request")
+                handler.request.sendall(res.to_data())
+                return
+        else:
+            res.set_status(404,"Not Found")
+            handler.request.sendall(res.to_data())
+            return
+    elif "session" in request.cookies:
+        c = {}
+        d = {}
+        data = json.loads(request.body.decode("utf-8"))
+        new_nickname = escapeContents(data.get("nickname"))
+        c["nickname"] = new_nickname
+        c["author"] = request.cookies["session"]
+        d["author"] = request.cookies["session"]
+
+        if new_nickname:
+            session_collection.update_one(d,{"$set":c}, upsert = True)
+            res.set_status(200,"OK")
+            handler.request.sendall(res.to_data())
+            return
+            
+        else:
+            res.set_status(400,"Bad Request")
+            handler.request.sendall(res.to_data())
+            return
+    else:
+        res.set_status(403,"Forbidden")
+        handler.request.sendall(res.to_data())
+        return
+
+def patchR(request, handler):
+    res = Response()
+    messageid = request.path.split("/")[-1]
+    if "auth_token" in request.cookies:
+        data = json.loads(request.body.decode("utf-8"))
+        emoji = escapeContents(data.get("emoji"))
+        if emoji:
+            d = {}
+            d["id"] = messageid
+            chat = chat_collection.find_one(d)
+            if chat is None:
+                res.set_status(404,"Not Found")
+                handler.request.sendall(res.to_data())
+                return
+            auth_token = request.cookies["auth_token"]
+            hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+            i = {}
+            i["auth_token"] = hash_auth
+            userID = userAuth_collection.find_one(i).get("username")
+            filter = {}
+            filter["id"] = userID
+            auth = userPass_collection.find_one(filter).get("username")
+            if auth is not None:  
+                c = {}
+                c["reactions"] = emoji
+                c["author"] = auth
+                c["id"] = messageid
+                react = reaction_collection.find_one(c)
+            else:
+                res.set_status(404,"Not Found")
+                handler.request.sendall(res.to_data())
+                return
+            if react is None:
+                reaction_collection.insert_one(c)
+                res.set_status(200,"OK")
+                handler.request.sendall(res.to_data())
+                return
+
+            else:
+                res.set_status(403,"Forbidden")
+                handler.request.sendall(res.to_data())
+                return
+    if "session" in request.cookies:
+        data = json.loads(request.body.decode("utf-8"))
+        emoji = escapeContents(data.get("emoji"))
+        if emoji:
+            d = {}
+            d["id"] = messageid
+            chat = chat_collection.find_one(d)
+            if chat is None:
+                res.set_status(404,"Not Found")
+                handler.request.sendall(res.to_data())
+                return
+            c = {}
+            c["reactions"] = emoji
+            c["author"] = request.cookies["session"]
+            c["id"] = messageid
+            react = reaction_collection.find_one(c)
+            
+            if react is None:
+                reaction_collection.insert_one(c)
+                res.set_status(200,"OK")
+                handler.request.sendall(res.to_data())
+                return
+
+            else:
+                res.set_status(403,"Forbidden")
+                handler.request.sendall(res.to_data())
+                return
+    else:
+        res.set_status(403,"Forbidden")
+        handler.request.sendall(res.to_data())
+        return
+
+def deleteR(request, handler):
+    res = Response()
+    messageid = request.path.split("/")[-1]
+    if "auth_token" in request.cookies:
+        data = json.loads(request.body.decode("utf-8"))
+        emoji = escapeContents(data.get("emoji"))
+        if emoji:
+            d = {}
+            d["id"] = messageid
+            chat = chat_collection.find_one(d)
+            if chat is None:
+                res.set_status(404,"Not Found")
+                handler.request.sendall(res.to_data())
+                return
+            auth_token = request.cookies["auth_token"]
+            hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+            i = {}
+            i["auth_token"] = hash_auth
+            userID = userAuth_collection.find_one(i).get("id")
+            filter = {}
+            filter["id"] = userID
+            auth = userPass_collection.find_one(filter).get("username")
+            if auth is not None:  
+                c = {}
+                c["reactions"] = emoji
+                c["author"] = auth
+                c["id"] = messageid
+                react = reaction_collection.find_one(c)
+                if react is not None:
+                    reaction_collection.delete_one(c)
+                    res.set_status(200,"OK")
+                    handler.request.sendall(res.to_data())
+                    return
+                else:
+                    res.set_status(403,"Forbidden")
+                    handler.request.sendall(res.to_data())
+                    return
+            else:
+                res.set_status(404,"Not Found")
+                handler.request.sendall(res.to_data())
+                return
+    if "session" in request.cookies:
+        data = json.loads(request.body.decode("utf-8"))
+        emoji = escapeContents(data.get("emoji"))
+        if emoji:
+            d = {}
+            d["id"] = messageid
+            chat = chat_collection.find_one(d)
+            if chat is None:
+                res.set_status(404,"Not Found")
+                handler.request.sendall(res.to_data())
+                return
+            c = {}
+            c["reactions"] = emoji
+            c["author"] = request.cookies["session"]
+            c["id"] = messageid
+            react = reaction_collection.find_one(c)
+            if react is not None:
+                reaction_collection.delete_one(c)
+                res.set_status(200,"OK")
+                handler.request.sendall(res.to_data())
+                return
+            else:
+                res.set_status(403,"Forbidden")
+                handler.request.sendall(res.to_data())
+                return
+    else:
+        res.set_status(403,"Forbidden")
+        handler.request.sendall(res.to_data())
+        return
+
+def register(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/register.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def getLog(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/login.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def settings(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/settings.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def search(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/search-users.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def specCharReplace(data):
+    data = data.replace("%21","!")
+    data = data.replace("%40", "@")
+    data = data.replace("%23", "#")
+    data = data.replace("%24", "$")
+    data = data.replace("%25", "%")
+    data = data.replace("%5E", "^")
+    data = data.replace("%26", "&")
+    data = data.replace("%28", "(")
+    data = data.replace("%29", ")")
+    data = data.replace("%2D", "-")
+    data = data.replace("%5F", "_")
+    data = data.replace("%3D", "=")
+    return data
+
+def registration(request,handler):
+    res = Response()
+    user_info = extract_credentials(request)
+    password = user_info[1]
+    user = user_info[0]
+    user_pass = {}
+    user_pass["password"] = bcrypt.hashpw(specCharReplace(password).encode(),bcrypt.gensalt()).decode("utf-8")
+    user_pass["username"] = user
+
+    usernames = {}
+    usernames["username"] = user
+    valid = validate_password(specCharReplace(password))
+    check = userPass_collection.find_one(usernames)
+    
+    if valid and check is None:
+        user_pass["id"] = str(uuid.uuid4())
+        userPass_collection.insert_one(user_pass)
+        res.set_status(200,"OK")
+        handler.request.sendall(res.to_data())
+        return
+    else:
+        res.set_status(400,"Bad Request")
+        handler.request.sendall(res.to_data())
+        return
+
+def postLog(request, handler):
+    res = Response()
+    body = request.body
+    if body is None:
+        res.set_status(400,"Bad Request3")
+        handler.request.sendall(res.to_data())
+        return
+
+    user_info = extract_credentials(request)
+    password = specCharReplace(user_info[1])
+    user = user_info[0]
+    username = {}
+    username["username"] = user
+    check_user = userPass_collection.find_one(username)
+    if check_user is None:
+        res.set_status(400,"Bad Request2")
+        handler.request.sendall(res.to_data())
+        return
+    
+    encrypt_pass = check_user.get("password")
+    check_pass = bcrypt.checkpw(password = password.encode(), hashed_password = encrypt_pass.encode())
+    if not check_pass:
+        res.set_status(400,"Bad Request1")
+        handler.request.sendall(res.to_data())
+        return
+    
+    cookie={}
+    auth_token = str(uuid.uuid4())
+    cookie["auth_token"] = auth_token + ";max-age=99999999999;HttpOnly" 
+    res.cookies(cookie)
+    userID = check_user.get("id")
+    hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+    auth = {}
+    auth["auth_token"] = hash_auth
+    auth["id"] = userID
+    userAuth_collection.insert_one(auth)
+
+    if "session" in request.cookies:
+        b = {}
+        b["author"] = user
+        c = {}
+        c["author"] = request.cookies["session"]
+        chat_collection.update_many(c,{"$set":b})
+
+    res.set_status(200,"OK")
+    handler.request.sendall(res.to_data())
+    return
+
+def logout(request, handler):
+    res = Response()
+    auth = request.cookies["auth_token"]
+    hash_auth = hashlib.sha256(auth.encode()).hexdigest()
+    i = {}
+    i["auth_token"] = hash_auth
+    check = userAuth_collection.find_one(i)
+    if check is not None:
+        userAuth_collection.delete_one(i)
+        cookie={}
+        auth_token = " "
+        cookie["auth_token"] = auth_token + ";max-age=0;HttpOnly" 
+        res.cookies(cookie)
+
+    res.set_status(200,"OK")
+    handler.request.sendall(res.to_data())
+    return
+
+def me(request, handler):
+    res = Response()
+    if "auth_token" in request.cookies:
+        auth = request.cookies["auth_token"]
+        hash_auth = hashlib.sha256(auth.encode()).hexdigest()
+        i = {}
+        i["auth_token"] = hash_auth
+        check = userAuth_collection.find_one(i)
+        d = {}
+        if check is not None:
+            userID = check.get("id")
+
+            filter = {}
+            filter["id"] = userID
+            find_user = userPass_collection.find_one(filter).get("username")
+            d["id"] = userID
+            d["username"] = find_user
+
+            res.set_status(200,"OK")
+            res.json(d)
+            handler.request.sendall(res.to_data())
+            return 
+        else:
+            d["username"] = ""
+            d["id"] = ""
+            res.set_status(401,"Unauthorized")
+            res.json(d)
+            handler.request.sendall(res.to_data())
+            return
+    else:
+        d["username"] = ""
+        d["id"] = ""
+        res.set_status(401,"Unauthorized")
+        res.json(d)
+        handler.request.sendall(res.to_data())
+        
+        return 
+def userSearch(request, handler):
+    res = Response()
+    querySearch = request.path.split("?")[-1]
+    searchUser = querySearch.split("=")[-1]
+    if len(searchUser) == 0:
+        result = {}
+        result["users"] = []
+        res.json(result)
+        res.set_status(200,"OK")
+        handler.request.sendall(res.to_data())
+        return
+    test = list(userPass_collection.find({"username":{"$regex":f"{searchUser}", "$options": ""}},{"_id": 0, "id": 1, "username": 1}))
+    result = {}
+    result["users"] = test
+    res.set_status(200,"OK")
+    res.json(result)
+    handler.request.sendall(res.to_data())
+    return 
+
+def postSetting(request, handler):
+    res = Response()
+    body = request.body
+    if body is None:
+        res.set_status(400,"Bad Request")
+        handler.request.sendall(res.to_data())
+        return
+
+    user_info = extract_credentials(request)
+    given_password = specCharReplace(user_info[1])
+    given_user = user_info[0]
+
+    if "auth_token" in request.cookies:
+        auth_token = request.cookies["auth_token"]
+        hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+        i = {}
+        i["auth_token"] = hash_auth
+        userID = userAuth_collection.find_one(i).get("id")
+        user = {}
+        user["id"] = userID
+
+        get_userID = userPass_collection.find_one(user)
+        if get_userID is None:
+            res.set_status(400,"Bad Request")
+            handler.request.sendall(res.to_data())
+            return
+    
+    get_pass = get_userID.get("password")
+    get_user = get_userID.get("username")
+    check_pass = bcrypt.checkpw(given_password.encode(), get_pass.encode())
+    if len(given_password) == 0:
+        b = {}
+        b["username"] = given_user
+        c = {}
+        c["username"] = get_user
+        userPass_collection.update_one(c,{"$set":b})
+
+        res.set_status(200,"OK")
+        handler.request.sendall(res.to_data())
+        return
+    valid = validate_password(specCharReplace(given_password))
+    if not valid:       
+        res.set_status(400,"Bad Request")
+        handler.request.sendall(res.to_data())
+        return
+    elif ((not check_pass) or (given_user != get_user)) :
+        b = {}
+        b["username"] = given_user
+        b["password"] = bcrypt.hashpw(specCharReplace(given_password).encode(),bcrypt.gensalt()).decode("utf-8")
+        c = {}
+        c["username"] = get_user
+        c["password"] = get_pass
+        userPass_collection.update_one(c,{"$set":b})
+
+    res.set_status(200,"OK")
+    handler.request.sendall(res.to_data())
+    return

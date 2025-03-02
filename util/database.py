@@ -16,3 +16,17 @@ else:
 db = mongo_client["cse312"]
 
 chat_collection = db["chat"]
+session_collection = db["session"]
+reaction_collection = db["reactions"]
+userPass_collection = db["password"]
+userAuth_collection = db["auth_token"]
+
+'''
+for mess in reaction_collection.find({}):
+    print(mess)
+'''
+#chat_collection.delete_many({})
+#session_collection.delete_many({})
+#reaction_collection.delete_many({})
+#userPass_collection.delete_many({})
+#userAuth_collection.delete_many({})
