@@ -1,8 +1,3 @@
-from util.response import Response
-import uuid
-import json
-import requests
-
 def escapeContents(data):
     data = data.replace("&","&amp;")
     data = data.replace("<","&lt;")
@@ -21,6 +16,24 @@ def specCharReplace(data):
     data = data.replace("%2D", "-")
     data = data.replace("%5F", "_")
     data = data.replace("%3D", "=")
+    data = data.replace("%3A", ":")
+    data = data.replace("%2F", "/")
+    data = data.replace("%3F", "?")
+    data = data.replace("%5B", "[")
+    data = data.replace("%5D", "]")
+    data = data.replace("%27", "'")
+    data = data.replace("%2A", "*")
+    data = data.replace("%2B", "+")
+    data = data.replace("%2C", ",")
+    data = data.replace("%3B", ";")
+    data = data.replace("%20", " ")
+    data = data.replace("%3C", "<")
+    data = data.replace("%3E", ">")
+    data = data.replace("%60", "`")
+    data = data.replace("%7B", "{")
+    data = data.replace("%7C", "|")
+    data = data.replace("%7D", "}")
+    data = data.replace("%7E", "~")
     data = data.replace("%25", "%")
     return data
 
@@ -58,3 +71,35 @@ def validate_password(password):
             test_alnumSpec = False
 
     return (test_digit and test_alnumSpec and test_lower and test_special and test_upper)
+
+
+def test1():
+    password = "Kl123!"
+    assert validate_password(password) == False
+def test2():
+    password = "Kl123456789"
+    assert validate_password(password) == False
+def test3():    
+    password = "Klasdfsdfasdfs!"
+    assert validate_password(password) == False
+def test4():    
+    password = "Kl123456<!"
+    assert validate_password(password) == False
+def test5():    
+    password = "KLAJKSLKAJD123!"
+    assert validate_password(password) == False
+def test6():    
+    password = "asdasddasdal123!"
+    assert validate_password(password) == False
+def test7():    
+    password = "Kl123456!"
+    assert validate_password(password) == True
+
+if __name__ == '__main__':
+    test1()
+    test2()
+    test3()
+    test4()
+    test5()
+    test6()
+    test7()

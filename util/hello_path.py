@@ -560,7 +560,7 @@ def registration(request,handler):
     valid = validate_password(password)
     check = userPass_collection.find_one(usernames)
     
-    if valid and check is None:
+    if valid and (check is None):
         user_pass["id"] = str(uuid.uuid4())
         userPass_collection.insert_one(user_pass)
         res.set_status(200,"OK")
