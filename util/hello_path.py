@@ -546,33 +546,18 @@ def search(request, handler):
             res.headers(head)
             handler.request.sendall(res.to_data())
 
-def specCharReplace(data):
-    data = data.replace("%21","!")
-    data = data.replace("%40", "@")
-    data = data.replace("%23", "#")
-    data = data.replace("%24", "$")
-    data = data.replace("%25", "%")
-    data = data.replace("%5E", "^")
-    data = data.replace("%28", "(")
-    data = data.replace("%29", ")")
-    data = data.replace("%2D", "-")
-    data = data.replace("%5F", "_")
-    data = data.replace("%3D", "=")
-    data = data.replace("%26", "&")
-    return data
-
 def registration(request,handler):
     res = Response()
     user_info = extract_credentials(request)
     password = user_info[1]
     user = user_info[0]
     user_pass = {}
-    user_pass["password"] = bcrypt.hashpw(specCharReplace(password).encode(),bcrypt.gensalt()).decode("utf-8")
+    user_pass["password"] = bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode("utf-8")
     user_pass["username"] = user
 
     usernames = {}
     usernames["username"] = user
-    valid = validate_password(specCharReplace(password))
+    valid = validate_password(password)
     check = userPass_collection.find_one(usernames)
     
     if valid and check is None:
@@ -595,7 +580,7 @@ def postLog(request, handler):
         return
 
     user_info = extract_credentials(request)
-    password = specCharReplace(user_info[1])
+    password = user_info[1]
     user = user_info[0]
     username = {}
     username["username"] = user
@@ -718,7 +703,7 @@ def postSetting(request, handler):
         return
 
     user_info = extract_credentials(request)
-    given_password = specCharReplace(user_info[1])
+    given_password = user_info[1]
     given_user = user_info[0]
 
     if "auth_token" in request.cookies:
@@ -749,7 +734,7 @@ def postSetting(request, handler):
         res.set_status(200,"OK")
         handler.request.sendall(res.to_data())
         return
-    valid = validate_password(specCharReplace(given_password))
+    valid = validate_password(given_password)
     if not valid:       
         res.set_status(400,"Bad Request")
         handler.request.sendall(res.to_data())
@@ -757,7 +742,7 @@ def postSetting(request, handler):
     elif ((not check_pass) or (given_user != get_user)) :
         b = {}
         b["username"] = given_user
-        b["password"] = bcrypt.hashpw(specCharReplace(given_password).encode(),bcrypt.gensalt()).decode("utf-8")
+        b["password"] = bcrypt.hashpw(given_password.encode(),bcrypt.gensalt()).decode("utf-8")
         c = {}
         c["username"] = get_user
         c["password"] = get_pass

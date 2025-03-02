@@ -9,6 +9,21 @@ def escapeContents(data):
     data = data.replace(">","&gt;")
     return data
 
+def specCharReplace(data):
+    data = data.replace("%21","!")
+    data = data.replace("%40", "@")
+    data = data.replace("%23", "#")
+    data = data.replace("%24", "$")
+    data = data.replace("%5E", "^")
+    data = data.replace("%26", "&")
+    data = data.replace("%28", "(")
+    data = data.replace("%29", ")")
+    data = data.replace("%2D", "-")
+    data = data.replace("%5F", "_")
+    data = data.replace("%3D", "=")
+    data = data.replace("%25", "%")
+    return data
+
 def extract_credentials(request):
     data = request.body.decode("utf-8")
     split = data.split("&")
@@ -18,8 +33,7 @@ def extract_credentials(request):
         user_password = users.split("=")
         user_pass[str(user_password[0])] = escapeContents(user_password[1])
     username = user_pass["username"]
-    password = user_pass["password"]
-
+    password = specCharReplace(user_pass["password"])
     return [username, password]
 
 def validate_password(password):
