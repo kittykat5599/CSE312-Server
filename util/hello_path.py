@@ -551,25 +551,27 @@ def registration(request,handler):
     user_info = extract_credentials(request)
     password = user_info[1]
     user = user_info[0]
-    user_pass = {}
-    user_pass["password"] = bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode("utf-8")
-    user_pass["username"] = user
-
-    usernames = {}
-    usernames["username"] = user
     valid = validate_password(password)
-    check = userPass_collection.find_one(usernames)
-    
-    if valid and (check is None):
-        user_pass["id"] = str(uuid.uuid4())
-        userPass_collection.insert_one(user_pass)
-        res.set_status(200,"OK")
-        handler.request.sendall(res.to_data())
-        return
-    else:
+    if not valid:
         res.set_status(400,"Bad Request")
         handler.request.sendall(res.to_data())
         return
+    usernames = {}
+    usernames["username"] = user
+    check = userPass_collection.find_one(usernames)
+    if check is not None:
+        res.set_status(400,"Bad Request")
+        handler.request.sendall(res.to_data())
+        return
+    
+    user_pass = {}
+    user_pass["password"] = bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode("utf-8")
+    user_pass["username"] = user
+    user_pass["id"] = str(uuid.uuid4())
+    userPass_collection.insert_one(user_pass)
+    res.set_status(200,"OK")
+    handler.request.sendall(res.to_data())
+    return
 
 def postLog(request, handler):
     res = Response()

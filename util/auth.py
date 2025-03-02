@@ -56,7 +56,7 @@ def validate_password(password):
     test_special = False
     test_digit = False
     test_alnumSpec = True
-    if len(password) < 8:
+    if len(password) <= 8:
         return False
     for char in password:
         if char.islower():
@@ -75,6 +75,9 @@ def validate_password(password):
 
 def test1():
     password = "Kl123!"
+    assert validate_password(password) == False
+def test8():
+    password = "Kl12378!"
     assert validate_password(password) == False
 def test2():
     password = "Kl123456789"
