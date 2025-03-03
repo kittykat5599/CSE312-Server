@@ -176,6 +176,7 @@ def deleteC(request, handler):
         chat = chat_collection.find_one(d)
         if chat is None:
             res.set_status(404,"Not Found")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
         auth_token = request.cookies["auth_token"]
@@ -195,10 +196,12 @@ def deleteC(request, handler):
                 return
             else:
                 res.set_status(403,"Forbidden")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
         else:
             res.set_status(404,"Not Found")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
     elif "session" in request.cookies:
@@ -207,6 +210,7 @@ def deleteC(request, handler):
         chat = chat_collection.find_one(d)
         if chat is None:
             res.set_status(404,"Not Found")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
         if (request.cookies["session"]) == chat["author"]:
@@ -216,10 +220,12 @@ def deleteC(request, handler):
             return
         else:
             res.set_status(403,"Forbidden")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
     else:
         res.set_status(403,"Forbidden")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
 
@@ -237,6 +243,7 @@ def patchC(request, handler):
         chat = chat_collection.find_one(d)
         if chat is None:
             res.set_status(404,"Not Found")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
         auth_token = request.cookies["auth_token"]
@@ -255,10 +262,12 @@ def patchC(request, handler):
                 return
             else:
                 res.set_status(403,"Forbidden")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
         else:
             res.set_status(404,"Not Found")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
     elif "session" in request.cookies:
@@ -272,6 +281,7 @@ def patchC(request, handler):
         chat = chat_collection.find_one(d)
         if chat is None:
             res.set_status(404,"Not Found")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
         if (request.cookies["session"]) == chat["author"]:
@@ -281,10 +291,12 @@ def patchC(request, handler):
             return
         else:
             res.set_status(403,"Forbidden")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
     else:
         res.set_status(403,"Forbidden")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
     
@@ -320,6 +332,7 @@ def nicknamePatch(request, handler):
                 return
         else:
             res.set_status(404,"Not Found")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
     elif "session" in request.cookies:
@@ -344,6 +357,7 @@ def nicknamePatch(request, handler):
             return
     else:
         res.set_status(403,"Forbidden")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
 
@@ -359,6 +373,7 @@ def patchR(request, handler):
             chat = chat_collection.find_one(d)
             if chat is None:
                 res.set_status(404,"Not Found")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
             auth_token = request.cookies["auth_token"]
@@ -377,6 +392,7 @@ def patchR(request, handler):
                 react = reaction_collection.find_one(c)
             else:
                 res.set_status(404,"Not Found")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
             if react is None:
@@ -387,6 +403,7 @@ def patchR(request, handler):
 
             else:
                 res.set_status(403,"Forbidden")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
     if "session" in request.cookies:
@@ -398,6 +415,7 @@ def patchR(request, handler):
             chat = chat_collection.find_one(d)
             if chat is None:
                 res.set_status(404,"Not Found")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
             c = {}
@@ -414,10 +432,12 @@ def patchR(request, handler):
 
             else:
                 res.set_status(403,"Forbidden")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
     else:
         res.set_status(403,"Forbidden")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
 
@@ -433,6 +453,7 @@ def deleteR(request, handler):
             chat = chat_collection.find_one(d)
             if chat is None:
                 res.set_status(404,"Not Found")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
             auth_token = request.cookies["auth_token"]
@@ -456,10 +477,12 @@ def deleteR(request, handler):
                     return
                 else:
                     res.set_status(403,"Forbidden")
+                    res.text("failed")
                     handler.request.sendall(res.to_data())
                     return
             else:
                 res.set_status(404,"Not Found")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
     if "session" in request.cookies:
@@ -471,6 +494,7 @@ def deleteR(request, handler):
             chat = chat_collection.find_one(d)
             if chat is None:
                 res.set_status(404,"Not Found")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
             c = {}
@@ -485,10 +509,12 @@ def deleteR(request, handler):
                 return
             else:
                 res.set_status(403,"Forbidden")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
     else:
         res.set_status(403,"Forbidden")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
 
@@ -639,8 +665,8 @@ def logout(request, handler):
     if check is not None:
         userAuth_collection.delete_one(i)
         cookie={}
-        auth_token = " "
-        cookie["auth_token"] = auth_token + ";max-age=0;HttpOnly" 
+        #auth_token = " "
+        cookie["auth_token"] = auth + ";max-age=0;HttpOnly" 
         res.cookies(cookie)
         res.set_status(200,"OK")
         handler.request.sendall(res.to_data())
@@ -677,6 +703,7 @@ def me(request, handler):
             d["username"] = ""
             d["id"] = ""
             res.set_status(401,"Unauthorized")
+            res.text("failed")
             res.json(d)
             handler.request.sendall(res.to_data())
             return
@@ -685,6 +712,7 @@ def me(request, handler):
         d["username"] = ""
         d["id"] = ""
         res.set_status(401,"Unauthorized")
+        res.text("failed")
         res.json(d)
         handler.request.sendall(res.to_data())
         
