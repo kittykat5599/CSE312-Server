@@ -246,7 +246,7 @@ def patchC(request, handler):
         userID = userAuth_collection.find_one(i).get("id")
         filter = {}
         filter["id"] = userID
-        auth = userPass_collection.find(filter).get("username")
+        auth = userPass_collection.find_one(filter).get("username")
         if auth is not None:
             if (auth) == chat["author"]:
                 chat_collection.update_one(d,{"$set":c})
@@ -635,10 +635,13 @@ def logout(request, handler):
         auth_token = " "
         cookie["auth_token"] = auth_token + ";max-age=0;HttpOnly" 
         res.cookies(cookie)
-
-    res.set_status(200,"OK")
-    handler.request.sendall(res.to_data())
-    return
+        res.set_status(200,"OK")
+        handler.request.sendall(res.to_data())
+        return
+    else:
+        res.set_status(400,"Bad Request")
+        handler.request.sendall(res.to_data())
+        return
 
 def me(request, handler):
     res = Response()
