@@ -150,7 +150,7 @@ def postC(request, handler):
         
         auth = str(uuid.uuid4())
         cookie={}
-        cookie["session"] = auth + ";max-age=99999999999;HttpOnly" 
+        cookie["session"] = auth + ";Max-Age=99999999999;HttpOnly" 
         res.cookies(cookie)
         d = {}
         d["author"] = auth
@@ -635,7 +635,7 @@ def postLog(request, handler):
     
     cookie={}
     auth_token = str(uuid.uuid4())
-    cookie["auth_token"] = auth_token + ";max-age=99999999999;HttpOnly" 
+    cookie["auth_token"] = auth_token + ";Max-Age=99999999999;HttpOnly" 
     res.cookies(cookie)
     userID = check_user.get("id")
     hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
@@ -665,8 +665,8 @@ def logout(request, handler):
     if check is not None:
         userAuth_collection.delete_one(i)
         cookie={}
-        #auth_token = " "
-        cookie["auth_token"] = auth + ";max-age=0;HttpOnly" 
+        auth_token = ""
+        cookie["auth_token"] = auth_token + ";Max-Age=0;HttpOnly" 
         res.cookies(cookie)
         res.set_status(200,"OK")
         handler.request.sendall(res.to_data())
