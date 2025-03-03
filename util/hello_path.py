@@ -556,7 +556,7 @@ def registration(request,handler):
         res.set_status(400,"Bad Request")
         handler.request.sendall(res.to_data())
         return
-    '''
+
     usernames = {}
     usernames["username"] = user
     check = userPass_collection.find_one(usernames)
@@ -564,7 +564,7 @@ def registration(request,handler):
         res.set_status(400,"Bad Request")
         handler.request.sendall(res.to_data())
         return
-    '''
+
     user_pass = {}
     user_pass["password"] = bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode("utf-8")
     user_pass["username"] = user
@@ -689,7 +689,8 @@ def userSearch(request, handler):
         res.set_status(200,"OK")
         handler.request.sendall(res.to_data())
         return
-    test = list(userPass_collection.find({"username":{"$regex":f"{searchUser}", "$options": ""}},{"_id": 0, "id": 1, "username": 1}))
+    #test = list(userPass_collection.find({"username":{"$regex":f"{searchUser}", "$options": ""}},{"_id": 0, "id": 1, "username": 1}))
+    test = list(userPass_collection.find({"username":{"$regex":"^" + "{searchUser}"}},{"_id": 0, "id": 1, "username": 1}))
     result = {}
     result["users"] = test
     res.set_status(200,"OK")
