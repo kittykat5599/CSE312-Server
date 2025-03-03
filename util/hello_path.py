@@ -632,8 +632,8 @@ def logout(request, handler):
     if check is not None:
         userAuth_collection.delete_one(i)
         cookie={}
-        auth_token = " "
-        cookie["auth_token"] = auth_token + ";max-age=0;HttpOnly" 
+        #auth_token = ""
+        cookie["auth_token"] = auth + ";max-age=0;HttpOnly" 
         res.cookies(cookie)
         res.set_status(200,"OK")
         handler.request.sendall(res.to_data())
