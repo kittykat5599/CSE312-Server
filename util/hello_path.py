@@ -315,6 +315,7 @@ def nicknamePatch(request, handler):
                 
             else:
                 res.set_status(400,"Bad Request")
+                res.text("failed")
                 handler.request.sendall(res.to_data())
                 return
         else:
@@ -338,6 +339,7 @@ def nicknamePatch(request, handler):
             
         else:
             res.set_status(400,"Bad Request")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
     else:
@@ -554,6 +556,7 @@ def registration(request,handler):
     valid = validate_password(password)
     if not valid:
         res.set_status(400,"Bad Request")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
 
@@ -562,6 +565,7 @@ def registration(request,handler):
     check = userPass_collection.find_one(usernames)
     if check is not None:
         res.set_status(400,"Bad Request")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
 
@@ -579,6 +583,7 @@ def postLog(request, handler):
     body = request.body
     if body is None:
         res.set_status(400,"Bad Request")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
 
@@ -590,6 +595,7 @@ def postLog(request, handler):
     check_user = userPass_collection.find_one(username)
     if check_user is None:
         res.set_status(400,"Bad Request")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
     
@@ -597,6 +603,7 @@ def postLog(request, handler):
     check_pass = bcrypt.checkpw(password = password.encode(), hashed_password = encrypt_pass.encode())
     if not check_pass:
         res.set_status(400,"Bad Request")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
     
@@ -632,14 +639,15 @@ def logout(request, handler):
     if check is not None:
         userAuth_collection.delete_one(i)
         cookie={}
-        #auth_token = ""
-        cookie["auth_token"] = auth + ";max-age=0;HttpOnly" 
+        auth_token = " "
+        cookie["auth_token"] = auth_token + ";max-age=0;HttpOnly" 
         res.cookies(cookie)
         res.set_status(200,"OK")
         handler.request.sendall(res.to_data())
         return
     else:
         res.set_status(400,"Bad Request")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
 
@@ -705,6 +713,7 @@ def postSetting(request, handler):
     body = request.body
     if body is None:
         res.set_status(400,"Bad Request")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
 
@@ -724,6 +733,7 @@ def postSetting(request, handler):
         get_userID = userPass_collection.find_one(user)
         if get_userID is None:
             res.set_status(400,"Bad Request")
+            res.text("failed")
             handler.request.sendall(res.to_data())
             return
     
@@ -743,6 +753,7 @@ def postSetting(request, handler):
     valid = validate_password(given_password)
     if not valid:       
         res.set_status(400,"Bad Request")
+        res.text("failed")
         handler.request.sendall(res.to_data())
         return
     elif ((not check_pass) or (given_user != get_user)) :
