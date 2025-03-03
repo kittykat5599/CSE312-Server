@@ -578,7 +578,7 @@ def postLog(request, handler):
     res = Response()
     body = request.body
     if body is None:
-        res.set_status(400,"Bad Request3")
+        res.set_status(400,"Bad Request")
         handler.request.sendall(res.to_data())
         return
 
@@ -589,14 +589,14 @@ def postLog(request, handler):
     username["username"] = user
     check_user = userPass_collection.find_one(username)
     if check_user is None:
-        res.set_status(400,"Bad Request2")
+        res.set_status(400,"Bad Request")
         handler.request.sendall(res.to_data())
         return
     
     encrypt_pass = check_user.get("password")
     check_pass = bcrypt.checkpw(password = password.encode(), hashed_password = encrypt_pass.encode())
     if not check_pass:
-        res.set_status(400,"Bad Request1")
+        res.set_status(400,"Bad Request")
         handler.request.sendall(res.to_data())
         return
     
@@ -689,8 +689,7 @@ def userSearch(request, handler):
         res.set_status(200,"OK")
         handler.request.sendall(res.to_data())
         return
-    #test = list(userPass_collection.find({"username":{"$regex":f"{searchUser}", "$options": ""}},{"_id": 0, "id": 1, "username": 1}))
-    test = list(userPass_collection.find({"username":{"$regex":"^" + "{searchUser}"}},{"_id": 0, "id": 1, "username": 1}))
+    test = list(userPass_collection.find({"username":{"$regex":f"{searchUser}", "$options": ""}},{"_id": 0, "id": 1, "username": 1}))
     result = {}
     result["users"] = test
     res.set_status(200,"OK")

@@ -20,12 +20,10 @@ class Response:
         return self
 
     def cookies(self, cookies):
-        cookieStr = ""
         for key, value in cookies.items():
-            cookieStr = "Set-Cookie: " + key + "=" + value + "; Path=/\r\n"
-        cookieStr.encode()
+            self.cookie[key] = value + "; Path=/"
         return self
-
+    
     def bytes(self, data):
         self.body += data
         return self
