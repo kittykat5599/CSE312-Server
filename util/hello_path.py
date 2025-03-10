@@ -6,8 +6,10 @@ import requests
 import bcrypt
 from util.auth import validate_password, extract_credentials
 import hashlib
+from dotenv import load_dotenv
+import os
 
-
+state = ""
 # This path is provided as an example of how to use the router
 def hello_path(request, handler):
     res = Response()
@@ -794,5 +796,81 @@ def postSetting(request, handler):
         userPass_collection.update_one(c,{"$set":b})
 
     res.set_status(200,"OK")
+    handler.request.sendall(res.to_data())
+    return
+
+def authGit(request, handler):
+    res = Response()
+    load_dotenv()
+    clientID = os.getenv("GIT_CLIENT_ID")
+    redirectURI = os.getenv("REDIRECT_URI")
+    global state 
+    state = str(uuid.uuid4())
+    queryString = ("https://github.com/login/oauth/authorize"
+        "?client_id=" + clientID +
+        "&redirect_uri=" + redirectURI +
+        "&scopes=read:user user:email"
+        "&response_type=code"
+        "state=" + state)
+    res.set_status(302,"Redirecting")
+    res.headers({"Location":queryString})
+    handler.request.sendall(res.to_data())
+    return
+
+def authCallback(request, handler):
+    res = Response()
+    global state
+    clientID = os.getenv("GIT_CLIENT_ID")
+    clientSecret = os.getenv("GIT_CLIENT_SECRET")
+    redirectURI = os.getenv("REDIRECT_URI")
+    codeState = request.getpath().split("&")
+    stateValue = codeState[1].split("=")[1]
+    codeValue = codeState[0].split("=")[1]
+    res.set_status(302,"Redirecting")
+    if (state == stateValue):
+        state = ""
+        queryString = ("https://github.com/login/oauth/access_token"
+        "?client_id=" + clientID +
+        "&client_secret" + clientSecret +
+        "&code" + codeValue +
+        "&redirect_uri=" + redirectURI +
+        "&grant_type=authorization_code")
+        psot = requests.post(queryString)
+        aToken = json.dumps(psot.split("&")[0].split("=")[1])
+        d = {}
+        d["Content-Type"] = "application/json"
+        d["Authorization"] = "Bearer " + str(aToken)
+        info = json.loads(requests.get("https://api.github.com/user", headers = d).text)
+        userID = str(info['id'])
+        auth_token = str(uuid.uuid4())
+        c = {}
+        c["id"] = userID
+        check = userPass_collection.find_one(c)
+        if check is None:
+            user_pass = {}
+            user_pass["git_token"] = aToken
+            user_pass["username"] = info['login']
+            user_pass["id"] = userID
+            userPass_collection.insert_one(user_pass)
+            hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+            token = {}
+            token["auth_token"] = hash_auth
+            token["id"] = userID
+            userAuth_collection.insert_one(token)
+        else:
+            hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+            uID = {}
+            uID["id"] = userID
+            auth = {}
+            auth["auth_token"] = hash_auth
+            userAuth_collection.update_one(uID, {"$set": auth})
+        res.headers({"Location": "/"})
+        res.cookies({"auth_token":auth_token})
+    else:
+        res.set_status(401,"Unauthorized")
+        res.text("failed")
+        handler.request.sendall(res.to_data())
+        return
+
     handler.request.sendall(res.to_data())
     return

@@ -1,7 +1,7 @@
 import socketserver
 from util.request import Request
 from util.router import Router
-from util.hello_path import hello_path, home, chat, public, postC, getC, patchC, deleteC, nicknamePatch, patchR, deleteR, register, getLog, settings, search, registration, logout, postLog, me, postSetting, userSearch
+from util.hello_path import *
 
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
@@ -36,6 +36,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         self.router.add_route("GET", "/api/users/search", userSearch, False)
 
         self.router.add_route("POST", "/api/users/settings", postSetting, True)
+        
+        self.router.add_route("GET", "/authgithub", authGit, True)
+        self.router.add_route("GET", "/authcallback", authCallback, True)
+
 
 
 
