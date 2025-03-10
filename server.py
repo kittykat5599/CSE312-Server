@@ -38,7 +38,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         self.router.add_route("POST", "/api/users/settings", postSetting, True)
         
         self.router.add_route("GET", "/authgithub", authGit, True)
-        self.router.add_route("GET", "/authcallback", authCallback, True)
+        self.router.add_route("GET", "/authcallback", authCallback, False)
 
 
 

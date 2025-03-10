@@ -806,47 +806,59 @@ def authGit(request, handler):
     redirectURI = os.getenv("REDIRECT_URI")
     global state 
     state = str(uuid.uuid4())
-    queryString = ("https://github.com/login/oauth/authorize"
+    print(state)
+    queryString = ("https://github.com/login/oauth/authorize" 
         "?client_id=" + clientID +
         "&redirect_uri=" + redirectURI +
-        "&scopes=read:user user:email"
+        "&scopes=read:user user:email" 
         "&response_type=code"
-        "state=" + state)
+        "&state=" + state)
     res.set_status(302,"Redirecting")
     res.headers({"Location":queryString})
     handler.request.sendall(res.to_data())
     return
 
 def authCallback(request, handler):
+    print("a")
     res = Response()
     global state
     clientID = os.getenv("GIT_CLIENT_ID")
     clientSecret = os.getenv("GIT_CLIENT_SECRET")
     redirectURI = os.getenv("REDIRECT_URI")
-    codeState = request.getpath().split("&")
+    codeState = request.path.split("&")
     stateValue = codeState[1].split("=")[1]
     codeValue = codeState[0].split("=")[1]
     res.set_status(302,"Redirecting")
+    print("b")
     if (state == stateValue):
+        print("c")
         state = ""
         queryString = ("https://github.com/login/oauth/access_token"
         "?client_id=" + clientID +
-        "&client_secret" + clientSecret +
-        "&code" + codeValue +
+        "&client_secret=" + clientSecret +
+        "&code=" + codeValue +
         "&redirect_uri=" + redirectURI +
         "&grant_type=authorization_code")
-        psot = requests.post(queryString)
-        aToken = json.dumps(psot.split("&")[0].split("=")[1])
+        print(queryString)
+        psot = requests.post(queryString).text
+        print(psot)
+        aToken = psot.split("&")[0].split("=")[1]
         d = {}
         d["Content-Type"] = "application/json"
         d["Authorization"] = "Bearer " + str(aToken)
+        print(str(aToken))
+        v = requests.get("https://api.github.com/user", headers = d)
+        print(v.text)
         info = json.loads(requests.get("https://api.github.com/user", headers = d).text)
+        print(info)
         userID = str(info['id'])
         auth_token = str(uuid.uuid4())
         c = {}
         c["id"] = userID
         check = userPass_collection.find_one(c)
+        print("d")
         if check is None:
+            print("e")
             user_pass = {}
             user_pass["git_token"] = aToken
             user_pass["username"] = info['login']
@@ -857,7 +869,9 @@ def authCallback(request, handler):
             token["auth_token"] = hash_auth
             token["id"] = userID
             userAuth_collection.insert_one(token)
+            print("a6")
         else:
+            print("asdasd")
             hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
             uID = {}
             uID["id"] = userID
@@ -866,11 +880,13 @@ def authCallback(request, handler):
             userAuth_collection.update_one(uID, {"$set": auth})
         res.headers({"Location": "/"})
         res.cookies({"auth_token":auth_token})
+        print("dsafdsdf")
     else:
+        print("asdasd")
         res.set_status(401,"Unauthorized")
         res.text("failed")
         handler.request.sendall(res.to_data())
         return
-
+    print("545454")
     handler.request.sendall(res.to_data())
     return
