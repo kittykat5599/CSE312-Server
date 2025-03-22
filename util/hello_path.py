@@ -819,7 +819,6 @@ def authGit(request, handler):
     return
 
 def authCallback(request, handler):
-    print("a")
     res = Response()
     global state
     clientID = os.getenv("GIT_CLIENT_ID")
@@ -829,9 +828,7 @@ def authCallback(request, handler):
     stateValue = codeState[1].split("=")[1]
     codeValue = codeState[0].split("=")[1]
     res.set_status(302,"Redirecting")
-    print("b")
     if (state == stateValue):
-        print("c")
         state = ""
         queryString = ("https://github.com/login/oauth/access_token"
         "?client_id=" + clientID +
@@ -839,24 +836,18 @@ def authCallback(request, handler):
         "&code=" + codeValue +
         "&redirect_uri=" + redirectURI +
         "&grant_type=authorization_code")
-        print(queryString)
         psot = requests.post(queryString).text
-        print(psot)
         aToken = psot.split("&")[0].split("=")[1]
         d = {}
         d["Content-Type"] = "application/json"
         d["Authorization"] = "Bearer " + str(aToken)
-        print(str(aToken))
-        v = requests.get("https://api.github.com/user", headers = d)
-        print(v.text)
-        info = json.loads(requests.get("https://api.github.com/user", headers = d).text)
+        info = requests.get("https://api.github.com/user", headers = d).text
         print(info)
         userID = str(info['id'])
         auth_token = str(uuid.uuid4())
         c = {}
         c["id"] = userID
         check = userPass_collection.find_one(c)
-        print("d")
         if check is None:
             print("e")
             user_pass = {}
@@ -887,6 +878,25 @@ def authCallback(request, handler):
         res.text("failed")
         handler.request.sendall(res.to_data())
         return
-    print("545454")
+
     handler.request.sendall(res.to_data())
     return
+
+def avatar(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/change-avatar.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+            
+def avatar_change(request, handler):
+    accepted = {".jpg", ".png", ".gif"}
+    
+    pass

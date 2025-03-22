@@ -40,6 +40,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         self.router.add_route("GET", "/authgithub", authGit, True)
         self.router.add_route("GET", "/authcallback", authCallback, False)
 
+        self.router.add_route("GET", "/change-avatar", avatar, True)
+        self.router.add_route("POST", "/api/users/avatar", avatar_change, True)
 
 
 
