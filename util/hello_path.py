@@ -980,10 +980,22 @@ def avatar_change(request, handler):
     hash_auth = hashlib.sha256(user.encode()).hexdigest()
     i = {}
     i["auth_token"] = hash_auth
-    userID = userAuth_collection.find_one(i).get("id")
+    userID = userAuth_collection.find_one(i)
+    if userID is None:
+        res.set_status(404,"Not Found")
+        res.text("failed")
+        handler.request.sendall(res.to_data())
+        return
+    userID = userID.get("id")
     filter = {}
     filter["id"] = userID
-    auth = userPass_collection.find_one(filter).get("username")
+    auth = userPass_collection.find_one(filter)
+    if auth is None:
+        res.set_status(404,"Not Found")
+        res.text("failed")
+        handler.request.sendall(res.to_data())
+        return
+    auth = auth.get("username")
     s = {}
     s["author"] = auth
     f = {}
@@ -1001,7 +1013,13 @@ def postVideo(request, handler):
     hash_auth = hashlib.sha256(user.encode()).hexdigest()
     i = {}
     i["auth_token"] = hash_auth
-    userID = userAuth_collection.find_one(i).get("id")
+    userID = userAuth_collection.find_one(i)
+    if userID is None:
+        res.set_status(404,"Not Found")
+        res.text("failed")
+        handler.request.sendall(res.to_data())
+        return
+    userID = userID.get("id")
     parse = parse_multipart(request)
     title = parse.parts[0].content.replace(b"\r\n", b"").decode()
     description = parse.parts[1].content.replace(b"\r\n", b"").decode()
