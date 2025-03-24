@@ -698,8 +698,12 @@ def me(request, handler):
             filter = {}
             filter["id"] = userID
             find_user = userPass_collection.find_one(filter).get("username")
+            s = {}
+            s["author"] = find_user
+            profile = session_collection.find_one(s).get("imageURL")
             d["id"] = userID
             d["username"] = find_user
+            d["imageURL"] = profile
 
             res.set_status(200,"OK")
             res.json(d)
@@ -810,7 +814,6 @@ def authGit(request, handler):
     redirectURI = os.getenv("REDIRECT_URI")
     global state 
     state = str(uuid.uuid4())
-    print(state)
     queryString = ("https://github.com/login/oauth/authorize" 
         "?client_id=" + clientID +
         "&redirect_uri=" + redirectURI +
@@ -939,9 +942,9 @@ def vtubeVid(request, handler):
 def avatar_change(request, handler):
     res = Response()
     parse = parse_multipart(request)
-    spliting = parse.split(".")[1].replace('"','')
+    spliting = parse.parts[0].headers["Content-Disposition"].split(".")[1].replace('"','')
     mtype = "." + spliting
-    profilePic = "public/imgs/profile-pic/" + str(uuid.uuid4()) + mtype
+    profilePic = "public/imgs/profile-pics/" + str(uuid.uuid4()) + mtype
     with open(profilePic, "wb") as file:
         file.write(parse.parts[0].content)
 
@@ -989,7 +992,10 @@ def postVideo(request, handler):
     items["id"] = videoID
     video_collection.insert_one(items)
 
+    d = {}
+    d["id"] = videoID
     res.set_status(200,"OK")
+    res.json(d)
     handler.request.sendall(res.to_data())
     return
 
@@ -1019,6 +1025,7 @@ def getSingleVideo(request, handler):
     d = {}
     d["id"] = videoID
     coll = video_collection.find_one(d)
+    
     items = {}
     items["author_id"] = coll["author_id"]
     items["title"] = coll["title"]
@@ -1026,7 +1033,9 @@ def getSingleVideo(request, handler):
     items["video_path"] = coll["video_path"]
     items["created_at"] = str(coll["created_at"])
     items["id"] = coll["id"]
+    a = {}
+    a["video"] = items
     res.set_status(200,"OK")
-    res.json(items)
+    res.json(a)
     handler.request.sendall(res.to_data())
     return

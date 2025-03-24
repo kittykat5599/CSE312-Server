@@ -63,9 +63,12 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         #print("--- received data ---")
         #print(received_data)
         #print("--- end of data ---\n\n")
-        contentLen = received_data.split(b"Content-Length: ")[1].split(b"\r\n")[0]
-        body = contentLen.split(b"\r\n\r\n",1)[1]
-        bodylength = len(body)\
+        bodylength = 0
+        contentLen = 0
+        if (b"Content-Length" in received_data):
+            contentLen = received_data.split(b"Content-Length: ")[1].split(b"\r\n")[0]
+            body = received_data.split(b"\r\n\r\n",1)[1]
+            bodylength = len(body)
             
         request = Request(received_data)
         
