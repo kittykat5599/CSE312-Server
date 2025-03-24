@@ -1056,14 +1056,14 @@ def getSingleVideo(request, handler):
     d = {}
     d["id"] = videoID
     coll = video_collection.find_one(d)
-    
     items = {}
-    items["author_id"] = coll["author_id"]
-    items["title"] = coll["title"]
-    items["description"] = coll["description"]
-    items["video_path"] = coll["video_path"]
-    items["created_at"] = str(coll["created_at"])
-    items["id"] = coll["id"]
+    if coll is not None:
+        items["author_id"] = coll["author_id"]
+        items["title"] = coll["title"]
+        items["description"] = coll["description"]
+        items["video_path"] = coll["video_path"]
+        items["created_at"] = str(coll["created_at"])
+        items["id"] = coll["id"]
     a = {}
     a["video"] = items
     res.set_status(200,"OK")
