@@ -28,7 +28,7 @@ def parse_multipart(request):
         for line in header_part.split(b"\r\n"):
             key, value = line.decode().split(": ", 1)
             headers[key] = value
-            if key.lower() == "content-disposition":
+            if key == "Content-Disposition":
                 parts_info = value.split("; ")
                 for part in parts_info:
                     if part.startswith("name="):

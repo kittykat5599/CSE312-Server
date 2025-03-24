@@ -171,6 +171,7 @@ def postC(request, handler):
         }
     chat_collection.insert_one(auth_mess)
     res.set_status(200,"OK") 
+    res.text("pass")
     handler.request.sendall(res.to_data())
 
 def deleteC(request, handler):
@@ -198,6 +199,7 @@ def deleteC(request, handler):
             if (auth) == chat["author"]:
                 chat_collection.delete_one(d)
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
             else:
@@ -222,6 +224,7 @@ def deleteC(request, handler):
         if (request.cookies["session"]) == chat["author"]:
             chat_collection.delete_one(d)
             res.set_status(200,"OK")
+            res.text("pass")
             handler.request.sendall(res.to_data())
             return
         else:
@@ -264,6 +267,7 @@ def patchC(request, handler):
             if (auth) == chat["author"]:
                 chat_collection.update_one(d,{"$set":c})
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
             else:
@@ -293,6 +297,7 @@ def patchC(request, handler):
         if (request.cookies["session"]) == chat["author"]:
             chat_collection.update_one(d,{"$set":c})
             res.set_status(200,"OK")
+            res.text("pass")
             handler.request.sendall(res.to_data())
             return
         else:
@@ -328,6 +333,7 @@ def nicknamePatch(request, handler):
             if new_nickname:
                 session_collection.update_one(d,{"$set":c}, upsert = True)
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
                 
@@ -353,6 +359,7 @@ def nicknamePatch(request, handler):
         if new_nickname:
             session_collection.update_one(d,{"$set":c}, upsert = True)
             res.set_status(200,"OK")
+            res.text("pass")
             handler.request.sendall(res.to_data())
             return
             
@@ -404,6 +411,7 @@ def patchR(request, handler):
             if react is None:
                 reaction_collection.insert_one(c)
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
 
@@ -433,6 +441,7 @@ def patchR(request, handler):
             if react is None:
                 reaction_collection.insert_one(c)
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
 
@@ -479,6 +488,7 @@ def deleteR(request, handler):
                 if react is not None:
                     reaction_collection.delete_one(c)
                     res.set_status(200,"OK")
+                    res.text("pass")
                     handler.request.sendall(res.to_data())
                     return
                 else:
@@ -511,6 +521,7 @@ def deleteR(request, handler):
             if react is not None:
                 reaction_collection.delete_one(c)
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
             else:
@@ -607,6 +618,7 @@ def registration(request,handler):
     user_pass["id"] = str(uuid.uuid4())
     userPass_collection.insert_one(user_pass)
     res.set_status(200,"OK")
+    res.text("pass")
     handler.request.sendall(res.to_data())
     return
 
@@ -658,6 +670,7 @@ def postLog(request, handler):
         chat_collection.update_many(c,{"$set":b})
 
     res.set_status(200,"OK")
+    res.text("pass")
     handler.request.sendall(res.to_data())
     return
 
@@ -675,6 +688,7 @@ def logout(request, handler):
         cookie["auth_token"] = auth_token + ";Max-Age=0;HttpOnly" 
         res.cookies(cookie)
         res.set_status(200,"OK")
+        res.text("pass")
         handler.request.sendall(res.to_data())
         return
     else:
@@ -706,13 +720,13 @@ def me(request, handler):
             d["imageURL"] = profile
 
             res.set_status(200,"OK")
+            res.text("pass")
             res.json(d)
             handler.request.sendall(res.to_data())
             return 
         else:
             d["username"] = ""
             d["id"] = ""
-            d["imageURL"] = ""
             res.set_status(401,"Unauthorized")
             res.text("failed")
             res.json(d)
@@ -722,13 +736,12 @@ def me(request, handler):
         d = {}
         d["username"] = ""
         d["id"] = ""
-        d["imageURL"] = ""
         res.set_status(401,"Unauthorized")
         res.text("failed")
         res.json(d)
         handler.request.sendall(res.to_data())
-        
         return 
+    
 def userSearch(request, handler):
     res = Response()
     querySearch = request.path.split("?")[-1]
@@ -738,12 +751,14 @@ def userSearch(request, handler):
         result["users"] = []
         res.json(result)
         res.set_status(200,"OK")
+        res.text("pass")
         handler.request.sendall(res.to_data())
         return
     test = list(userPass_collection.find({"username":{"$regex":f"{searchUser}", "$options": ""}},{"_id": 0, "id": 1, "username": 1}))
     result = {}
     result["users"] = test
     res.set_status(200,"OK")
+    res.text("pass")
     res.json(result)
     handler.request.sendall(res.to_data())
     return 
@@ -788,6 +803,7 @@ def postSetting(request, handler):
         userPass_collection.update_one(c,{"$set":b})
 
         res.set_status(200,"OK")
+        res.text("pass")
         handler.request.sendall(res.to_data())
         return
     valid = validate_password(given_password)
@@ -806,6 +822,7 @@ def postSetting(request, handler):
         userPass_collection.update_one(c,{"$set":b})
 
     res.set_status(200,"OK")
+    res.text("pass")
     handler.request.sendall(res.to_data())
     return
 
@@ -967,6 +984,7 @@ def avatar_change(request, handler):
     session_collection.update_one(s,{"$set":f})
 
     res.set_status(200,"OK")
+    res.text("pass")
     handler.request.sendall(res.to_data())
     return
 
@@ -999,6 +1017,7 @@ def postVideo(request, handler):
     d = {}
     d["id"] = videoID
     res.set_status(200,"OK")
+    res.text("pass")
     res.json(d)
     handler.request.sendall(res.to_data())
     return
@@ -1019,6 +1038,7 @@ def getAllVideo(request, handler):
     d = {}
     d["videos"] = vid
     res.set_status(200,"OK")
+    res.text("pass")
     res.json(d)
     handler.request.sendall(res.to_data())
     return
@@ -1040,6 +1060,7 @@ def getSingleVideo(request, handler):
     a = {}
     a["video"] = items
     res.set_status(200,"OK")
+    res.text("pass")
     res.json(a)
     handler.request.sendall(res.to_data())
     return
