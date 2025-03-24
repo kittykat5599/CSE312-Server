@@ -720,6 +720,8 @@ def me(request, handler):
                     check_prof = profile.get("imageURL")
                     if check_prof is not None:
                         d["imageURL"] = check_prof
+                        d["id"] = userID
+                        d["username"] = user
                     else:
                         d["id"] = userID
                         d["username"] = user
