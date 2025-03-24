@@ -611,6 +611,16 @@ def registration(request,handler):
         res.text("failed")
         handler.request.sendall(res.to_data())
         return
+    
+    profile_pic = requests.get("https://api.dicebear.com/9.x/thumbs/svg?seed=" + str(uuid.uuid4()))
+    profURL = "public/imgs/profile-pics/" + str(uuid.uuid4()) + ".svg"
+    with open(profURL, "wb") as file:
+        file.write(profile_pic.content)
+    d = {}
+    d["author"] = user
+    d["nickname"] = user
+    d["imageURL"] = profURL
+    session_collection.insert_one(d)
 
     user_pass = {}
     user_pass["password"] = bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode("utf-8")
@@ -994,7 +1004,6 @@ def avatar_change(request, handler):
     with open(profilePic, "wb") as file:
         file.write(parse.parts[0].content)
 
-    
     user = request.cookies["auth_token"]
     hash_auth = hashlib.sha256(user.encode()).hexdigest()
     i = {}
@@ -1017,6 +1026,13 @@ def avatar_change(request, handler):
     auth = auth.get("username")
     s = {}
     s["author"] = auth
+    '''checkSess = session_collection.find_one(s)
+    if checkSess is None:
+        c = {}
+        c["nickname"] = auth
+        c["author"] = auth
+        c["imageURL"] = profilePic
+        session_collection.insert_one(c)'''
     f = {}
     f["imageURL"] = profilePic
     session_collection.update_one(s,{"$set":f})
