@@ -725,7 +725,22 @@ def me(request, handler):
                     else:
                         d["id"] = userID
                         d["username"] = user
-
+                else:
+                    d["username"] = ""
+                    d["id"] = ""
+                    res.set_status(401,"Unauthorized")
+                    res.text("failed")
+                    res.json(d)
+                    handler.request.sendall(res.to_data())
+                    return
+            else:
+                d["username"] = ""
+                d["id"] = ""
+                res.set_status(401,"Unauthorized")
+                res.text("failed")
+                res.json(d)
+                handler.request.sendall(res.to_data())
+                return
             res.set_status(200,"OK")
             res.text("pass")
             res.json(d)
