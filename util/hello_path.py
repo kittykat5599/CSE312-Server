@@ -736,10 +736,10 @@ def me(request, handler):
                         handler.request.sendall(res.to_data())
                         return 
                 else:
-                    d["username"] = ""
-                    d["id"] = ""
-                    res.set_status(401,"Unauthorized")
-                    res.text("failed")
+                    d["id"] = userID
+                    d["username"] = user
+                    res.set_status(200,"OK")
+                    res.text("pass")
                     res.json(d)
                     handler.request.sendall(res.to_data())
                     return
@@ -990,7 +990,6 @@ def avatar_change(request, handler):
     parse = parse_multipart(request)
     spliting = parse.parts[0].headers["Content-Disposition"].split(".")[1].replace('"','')
     mtype = "." + spliting
-    print(mtype)
     profilePic = "public/imgs/profile-pics/" + str(uuid.uuid4()) + mtype
     with open(profilePic, "wb") as file:
         file.write(parse.parts[0].content)
