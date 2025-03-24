@@ -58,7 +58,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         super().__init__(request, client_address, server)
 
     def handle(self):
-        received_data = self.request.recv(2048)
+        received_data = self.request.recv(10000)
         #print(self.client_address)
         #print("--- received data ---")
         #print(received_data)
@@ -73,7 +73,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         request = Request(received_data)
         
         while(bodylength != int(contentLen)):
-            body = self.request.recv(2048)
+            body = self.request.recv(10000)
             bodylength += len(body)
             request.body += body
 

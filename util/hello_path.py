@@ -63,7 +63,7 @@ def public(request, handler):
         "css": "text/css",
         "js": "application/javascript",
         "jpg": "image/jpeg",
-        "jpeg": "image/jpeg",
+        #"jpeg": "image/jpeg",
         "png": "image/png",
         "ico": "image/x-icon",
         "gif": "image/gif",
@@ -712,6 +712,7 @@ def me(request, handler):
         else:
             d["username"] = ""
             d["id"] = ""
+            d["imageURL"] = ""
             res.set_status(401,"Unauthorized")
             res.text("failed")
             res.json(d)
@@ -721,6 +722,7 @@ def me(request, handler):
         d = {}
         d["username"] = ""
         d["id"] = ""
+        d["imageURL"] = ""
         res.set_status(401,"Unauthorized")
         res.text("failed")
         res.json(d)
@@ -944,10 +946,12 @@ def avatar_change(request, handler):
     parse = parse_multipart(request)
     spliting = parse.parts[0].headers["Content-Disposition"].split(".")[1].replace('"','')
     mtype = "." + spliting
+    print(mtype)
     profilePic = "public/imgs/profile-pics/" + str(uuid.uuid4()) + mtype
     with open(profilePic, "wb") as file:
         file.write(parse.parts[0].content)
 
+    
     user = request.cookies["auth_token"]
     hash_auth = hashlib.sha256(user.encode()).hexdigest()
     i = {}
