@@ -715,9 +715,13 @@ def me(request, handler):
             s = {}
             s["author"] = find_user
             profile = session_collection.find_one(s).get("imageURL")
-            d["id"] = userID
-            d["username"] = find_user
-            d["imageURL"] = profile
+            if profile is not None:
+                d["id"] = userID
+                d["username"] = find_user
+                d["imageURL"] = profile
+            else:
+                d["id"] = userID
+                d["username"] = find_user
 
             res.set_status(200,"OK")
             res.text("pass")
