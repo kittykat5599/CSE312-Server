@@ -722,9 +722,19 @@ def me(request, handler):
                         d["imageURL"] = check_prof
                         d["id"] = userID
                         d["username"] = user
+                        res.set_status(200,"OK")
+                        res.text("pass")
+                        res.json(d)
+                        handler.request.sendall(res.to_data())
+                        return 
                     else:
                         d["id"] = userID
                         d["username"] = user
+                        res.set_status(200,"OK")
+                        res.text("pass")
+                        res.json(d)
+                        handler.request.sendall(res.to_data())
+                        return 
                 else:
                     d["username"] = ""
                     d["id"] = ""
@@ -741,11 +751,6 @@ def me(request, handler):
                 res.json(d)
                 handler.request.sendall(res.to_data())
                 return
-            res.set_status(200,"OK")
-            res.text("pass")
-            res.json(d)
-            handler.request.sendall(res.to_data())
-            return 
         else:
             d["username"] = ""
             d["id"] = ""
