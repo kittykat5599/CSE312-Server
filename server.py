@@ -41,7 +41,15 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         self.router.add_route("GET", "/authcallback", authCallback, False)
 
         self.router.add_route("GET", "/change-avatar", avatar, True)
-        self.router.add_route("POST", "/api/users/avatar", avatar_change, True)
+        self.router.add_route("POST", "/api/users/avatar", avatar_change, False)
+
+        self.router.add_route("GET", "/videotube", vtube, True)
+        self.router.add_route("GET", "/videotube/upload", vtubeUp, True)
+        self.router.add_route("GET", "/videotube/videos/", vtubeVid, False)
+
+        self.router.add_route("POST", "/api/videos", postVideo, True)
+        self.router.add_route("GET", "/api/videos", getAllVideo, True)
+        self.router.add_route("GET", "/api/videos/", getSingleVideo, False)
 
 
 
@@ -55,7 +63,16 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         #print("--- received data ---")
         #print(received_data)
         #print("--- end of data ---\n\n")
+        contentLen = received_data.split(b"Content-Length: ")[1].split(b"\r\n")[0]
+        body = contentLen.split(b"\r\n\r\n",1)[1]
+        bodylength = len(body)\
+            
         request = Request(received_data)
+        
+        while(bodylength != int(contentLen)):
+            body = self.request.recv(2048)
+            bodylength += len(body)
+            request.body += body
 
         self.router.route_request(request, self)
 

@@ -20,6 +20,7 @@ session_collection = db["session"]
 reaction_collection = db["reactions"]
 userPass_collection = db["password"]
 userAuth_collection = db["auth_token"]
+video_collection = db["videos"]
 
 '''
 for mess in reaction_collection.find({}):

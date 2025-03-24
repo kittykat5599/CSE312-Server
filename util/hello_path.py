@@ -1,5 +1,6 @@
+import datetime
 from util.response import Response
-from util.database import chat_collection, session_collection, reaction_collection, userPass_collection, userAuth_collection
+from util.database import chat_collection, session_collection, reaction_collection, userPass_collection, userAuth_collection, video_collection
 import uuid
 import json
 import requests
@@ -8,6 +9,7 @@ from util.auth import validate_password, extract_credentials
 import hashlib
 from dotenv import load_dotenv
 import os
+from util.multipart import *
 
 state = ""
 # This path is provided as an example of how to use the router
@@ -65,7 +67,9 @@ def public(request, handler):
         "png": "image/png",
         "ico": "image/x-icon",
         "gif": "image/gif",
-        "svg": "image/svg+xml"
+        "svg": "image/svg+xml",
+        "mp4": "video/mp4", 
+        "webp": "image/webp"
     }
     
     # If we know the extension, set the correct MIME type
@@ -842,14 +846,12 @@ def authCallback(request, handler):
         d["Content-Type"] = "application/json"
         d["Authorization"] = "Bearer " + str(aToken)
         info = requests.get("https://api.github.com/user", headers = d).text
-        print(info)
         userID = str(info['id'])
         auth_token = str(uuid.uuid4())
         c = {}
         c["id"] = userID
         check = userPass_collection.find_one(c)
         if check is None:
-            print("e")
             user_pass = {}
             user_pass["git_token"] = aToken
             user_pass["username"] = info['login']
@@ -860,9 +862,7 @@ def authCallback(request, handler):
             token["auth_token"] = hash_auth
             token["id"] = userID
             userAuth_collection.insert_one(token)
-            print("a6")
         else:
-            print("asdasd")
             hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
             uID = {}
             uID["id"] = userID
@@ -871,9 +871,7 @@ def authCallback(request, handler):
             userAuth_collection.update_one(uID, {"$set": auth})
         res.headers({"Location": "/"})
         res.cookies({"auth_token":auth_token})
-        print("dsafdsdf")
     else:
-        print("asdasd")
         res.set_status(401,"Unauthorized")
         res.text("failed")
         handler.request.sendall(res.to_data())
@@ -895,8 +893,140 @@ def avatar(request, handler):
             head["X-Content-Type-Options"] = "nosniff"
             res.headers(head)
             handler.request.sendall(res.to_data())
+
+def vtube(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/videotube.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def vtubeUp(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/upload.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def vtubeVid(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/view-video.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
             
 def avatar_change(request, handler):
-    accepted = {".jpg", ".png", ".gif"}
-    
-    pass
+    res = Response()
+    parse = parse_multipart(request)
+    spliting = parse.split(".")[1].replace('"','')
+    mtype = "." + spliting
+    profilePic = "public/imgs/profile-pic/" + str(uuid.uuid4()) + mtype
+    with open(profilePic, "wb") as file:
+        file.write(parse.parts[0].content)
+
+    user = request.cookies["auth_token"]
+    hash_auth = hashlib.sha256(user.encode()).hexdigest()
+    i = {}
+    i["auth_token"] = hash_auth
+    userID = userAuth_collection.find_one(i).get("id")
+    filter = {}
+    filter["id"] = userID
+    auth = userPass_collection.find_one(filter).get("username")
+    s = {}
+    s["author"] = auth
+    f = {}
+    f["imageURL"] = profilePic
+    session_collection.update_one(s,{"$set":f})
+
+    res.set_status(200,"OK")
+    handler.request.sendall(res.to_data())
+    return
+
+def postVideo(request, handler):
+    res = Response()
+    user = request.cookies["auth_token"]
+    hash_auth = hashlib.sha256(user.encode()).hexdigest()
+    i = {}
+    i["auth_token"] = hash_auth
+    userID = userAuth_collection.find_one(i).get("id")
+    parse = parse_multipart(request)
+    title = parse.parts[0].content.replace(b"\r\n", b"").decode()
+    description = parse.parts[1].content.replace(b"\r\n", b"").decode()
+    video = parse.parts[2].content
+    videoID = str(uuid.uuid4())
+    videoURL = "public/videos/" + videoID + ".mp4"
+
+    with open(videoURL, "wb") as file:
+        file.write(video)
+
+    items = {}
+    items["author_id"] = userID
+    items["title"] = str(title)
+    items["description"] = str(description)
+    items["video_path"] = videoURL
+    items["created_at"] = datetime.datetime.now()
+    items["id"] = videoID
+    video_collection.insert_one(items)
+
+    res.set_status(200,"OK")
+    handler.request.sendall(res.to_data())
+    return
+
+def getAllVideo(request, handler):
+    res = Response()
+    vid = []
+    coll = video_collection.find()
+    for item in coll:
+        items = {}
+        items["author_id"] = item["author_id"]
+        items["title"] = item["title"]
+        items["description"] = item["description"]
+        items["video_path"] = item["video_path"]
+        items["created_at"] = str(item["created_at"])
+        items["id"] = item["id"]
+        vid.append(items)
+    d = {}
+    d["videos"] = vid
+    res.set_status(200,"OK")
+    res.json(d)
+    handler.request.sendall(res.to_data())
+    return
+
+def getSingleVideo(request, handler):
+    res = Response()
+    videoID = request.path.split("/")[-1]
+    d = {}
+    d["id"] = videoID
+    coll = video_collection.find_one(d)
+    items = {}
+    items["author_id"] = coll["author_id"]
+    items["title"] = coll["title"]
+    items["description"] = coll["description"]
+    items["video_path"] = coll["video_path"]
+    items["created_at"] = str(coll["created_at"])
+    items["id"] = coll["id"]
+    res.set_status(200,"OK")
+    res.json(items)
+    handler.request.sendall(res.to_data())
+    return
