@@ -708,20 +708,21 @@ def me(request, handler):
         d = {}
         if check is not None:
             userID = check.get("id")
-
             filter = {}
             filter["id"] = userID
-            find_user = userPass_collection.find_one(filter).get("username")
-            s = {}
-            s["author"] = find_user
-            profile = session_collection.find_one(s).get("imageURL")
-            if profile is not None:
-                d["id"] = userID
-                d["username"] = find_user
-                d["imageURL"] = profile
-            else:
-                d["id"] = userID
-                d["username"] = find_user
+            find_user = userPass_collection.find_one(filter)
+            if find_user is not None:
+                user= find_user.get("username")
+                s = {}
+                s["author"] = user
+                profile = session_collection.find_one(s)
+                if profile is not None:
+                    check_prof = profile.get("imageURL")
+                    if check_prof is not None:
+                        d["imageURL"] = check_prof
+                    else:
+                        d["id"] = userID
+                        d["username"] = user
 
             res.set_status(200,"OK")
             res.text("pass")
