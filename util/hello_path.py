@@ -1068,8 +1068,17 @@ def postVideo(request, handler):
     items["id"] = videoID
 
     duration = videoDuration(videoURL)
-    if duration <= 60:
-        extractAudio(videoURL, audioURL)   
+    if duration > 60:
+        video_collection.insert_one(items)
+        d = {}
+        d["id"] = videoID
+        res.set_status(200,"OK")
+        res.text("pass")
+        res.json(d)
+        handler.request.sendall(res.to_data())
+        return
+    else:
+        extractAudio(videoURL, audioURL)
         load_dotenv()
         with open(audioURL, "rb") as f:
             headers = {}
@@ -1084,30 +1093,43 @@ def postVideo(request, handler):
         
         transcriptID = response.json().get("unique_id")
         items["transcription_id"] = transcriptID
+        video_collection.insert_one(items)
+        d = {}
+        d["id"] = videoID
+        res.set_status(200,"OK")
+        res.text("pass")
+        res.json(d)
+        handler.request.sendall(res.to_data())
+        return
 
-    video_collection.insert_one(items)
-    d = {}
-    d["id"] = videoID
-    res.set_status(200,"OK")
-    res.text("pass")
-    res.json(d)
-    handler.request.sendall(res.to_data())
-    return
+
+
 
 def getAllVideo(request, handler):
     res = Response()
     vid = []
     coll = video_collection.find()
     for item in coll:
-        items = {}
-        items["author_id"] = item["author_id"]
-        items["title"] = item["title"]
-        items["description"] = item["description"]
-        items["video_path"] = item["video_path"]
-        items["created_at"] = str(item["created_at"])
-        items["id"] = item["id"]
-        items["transcription_id"] = item["transcription_id"]
-        vid.append(items)
+        check = item.get("transcription_id")
+        if check is not None:
+            items = {}
+            items["author_id"] = item["author_id"]
+            items["title"] = item["title"]
+            items["description"] = item["description"]
+            items["video_path"] = item["video_path"]
+            items["created_at"] = str(item["created_at"])
+            items["id"] = item["id"]
+            items["transcription_id"] = item["transcription_id"]
+            vid.append(items)
+        else:
+            items = {}
+            items["author_id"] = item["author_id"]
+            items["title"] = item["title"]
+            items["description"] = item["description"]
+            items["video_path"] = item["video_path"]
+            items["created_at"] = str(item["created_at"])
+            items["id"] = item["id"]
+            vid.append(items)
     d = {}
     d["videos"] = vid
     res.set_status(200,"OK")
@@ -1128,12 +1150,22 @@ def getSingleVideo(request, handler):
         res.text("failed")
         handler.request.sendall(res.to_data())
         return
-    items["author_id"] = coll["author_id"]
-    items["title"] = coll["title"]
-    items["description"] = coll["description"]
-    items["video_path"] = coll["video_path"]
-    items["created_at"] = str(coll["created_at"])
-    items["id"] = coll["id"]
+    check = coll.get("transcription_id")
+    if check is not None:
+        items["author_id"] = coll["author_id"]
+        items["title"] = coll["title"]
+        items["description"] = coll["description"]
+        items["video_path"] = coll["video_path"]
+        items["created_at"] = str(coll["created_at"])
+        items["id"] = coll["id"]
+        items["transcription_id"] = coll["transcription_id"]
+    else:
+        items["author_id"] = coll["author_id"]
+        items["title"] = coll["title"]
+        items["description"] = coll["description"]
+        items["video_path"] = coll["video_path"]
+        items["created_at"] = str(coll["created_at"])
+        items["id"] = coll["id"]
     a = {}
     a["video"] = items
     res.set_status(200,"OK")

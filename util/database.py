@@ -31,3 +31,4 @@ for mess in reaction_collection.find({}):
 #reaction_collection.delete_many({})
 #userPass_collection.delete_many({})
 #userAuth_collection.delete_many({})
+#video_collection.delete_many({})
