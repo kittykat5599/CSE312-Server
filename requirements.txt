@@ -2,3 +2,6 @@ pymongo
 bcrypt
 requests
 dotenv
+ffmpeg-python
+nodejs
+npm

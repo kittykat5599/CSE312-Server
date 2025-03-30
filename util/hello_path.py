@@ -1026,13 +1026,6 @@ def avatar_change(request, handler):
     auth = auth.get("username")
     s = {}
     s["author"] = auth
-    '''checkSess = session_collection.find_one(s)
-    if checkSess is None:
-        c = {}
-        c["nickname"] = auth
-        c["author"] = auth
-        c["imageURL"] = profilePic
-        session_collection.insert_one(c)'''
     f = {}
     f["imageURL"] = profilePic
     session_collection.update_one(s,{"$set":f})
@@ -1061,10 +1054,11 @@ def postVideo(request, handler):
     video = parse.parts[2].content
     videoID = str(uuid.uuid4())
     videoURL = "public/videos/" + videoID + ".mp4"
+    audioURL = "public/audio/" + videoID + ".mp3"
 
     with open(videoURL, "wb") as file:
         file.write(video)
-
+    
     items = {}
     items["author_id"] = userID
     items["title"] = str(title)
@@ -1072,8 +1066,35 @@ def postVideo(request, handler):
     items["video_path"] = videoURL
     items["created_at"] = datetime.datetime.now()
     items["id"] = videoID
-    video_collection.insert_one(items)
 
+    duration = videoDuration(videoURL)
+    if duration > 60:
+        res.set_status(400,"Bad Request")
+        res.text("failed")
+        handler.request.sendall(res.to_data())
+        return
+    else:
+        extractAudio(videoURL, audioURL)
+        
+        load_dotenv()
+        #apiKey = os.getenv("API_Token")
+        with open(audioURL, "rb") as f:
+            headers = {}
+            headers["Authorization"] = "Bearer " + os.getenv("API_Token")
+            response = requests.post("https://transcription-api.nico.engineer/transcribe", files={"file": f}, headers=headers)
+        
+        if response.status_code != 200:
+            res.set_status(400,"Bad Request")
+            res.text("failed")
+            handler.request.sendall(res.to_data())
+            return
+        
+        transcriptID = response.json().get("unique_id")
+        items["transcription_id"] = transcriptID
+
+    #transcriptID = uploadTrans(audioURL, apiKey)
+
+    video_collection.insert_one(items)
     d = {}
     d["id"] = videoID
     res.set_status(200,"OK")
@@ -1094,6 +1115,7 @@ def getAllVideo(request, handler):
         items["video_path"] = item["video_path"]
         items["created_at"] = str(item["created_at"])
         items["id"] = item["id"]
+        items["transcription_id"] = item["transcription_id"]
         vid.append(items)
     d = {}
     d["videos"] = vid
@@ -1110,13 +1132,17 @@ def getSingleVideo(request, handler):
     d["id"] = videoID
     coll = video_collection.find_one(d)
     items = {}
-    if coll is not None:
-        items["author_id"] = coll["author_id"]
-        items["title"] = coll["title"]
-        items["description"] = coll["description"]
-        items["video_path"] = coll["video_path"]
-        items["created_at"] = str(coll["created_at"])
-        items["id"] = coll["id"]
+    if coll is  None:
+        res.set_status(404, "Not Found")
+        res.text("failed")
+        handler.request.sendall(res.to_data())
+        return
+    items["author_id"] = coll["author_id"]
+    items["title"] = coll["title"]
+    items["description"] = coll["description"]
+    items["video_path"] = coll["video_path"]
+    items["created_at"] = str(coll["created_at"])
+    items["id"] = coll["id"]
     a = {}
     a["video"] = items
     res.set_status(200,"OK")
@@ -1124,3 +1150,83 @@ def getSingleVideo(request, handler):
     res.json(a)
     handler.request.sendall(res.to_data())
     return
+
+def videoDuration(video_path):
+    output = os.popen(f"ffprobe -v error -show_entries format=duration -of json {video_path}").read()
+    duration = json.loads(output)["format"]["duration"]
+    return float(duration)
+
+def extractAudio(video_path, audio_path):
+    os.system(f"ffmpeg -i {video_path} -f mp3 {audio_path}")
+
+
+def getTranscript(request, handler):
+    res = Response()
+    videoID = request.path.split("/")[-1]
+    d = {}
+    d["id"] = videoID
+    video = video_collection.find_one(d)
+    if video is None:
+        res.set_status(404, "Not Found")
+        res.text("failed")
+        handler.request.sendall(res.to_data())
+        return
+    trans = video.get("transcription_id")
+    if trans is None:
+        res.set_status(404, "Not Found")
+        res.text("failed")
+        handler.request.sendall(res.to_data())
+        return
+    headers = {}
+    load_dotenv()
+    headers["Authorization"] = "Bearer " + os.getenv("API_Token")
+    response = requests.get(f"https://transcription-api.nico.engineer/transcriptions/{trans}", headers=headers)
+    
+    if response.status_code == 200:
+        data = json.loads(response.text)
+        s3_url = data["s3_url"]
+        if not s3_url:
+            res.set_status(400,"Bad Request")
+            res.text("failed")
+            handler.request.sendall(res.to_data())
+            return
+        else:
+            res.set_status(200, "OK")
+            trans = requests.get(s3_url).content
+            a = {}
+            a["transcript_url"] = trans
+            videtranscript = "public/transcript/" + videoID + ".vtt"
+            with open(videtranscript, "wb") as file:
+                file.write(trans)
+
+            video_collection.update_one(d, {"$set":a})
+            res.bytes(trans)
+            handler.request.sendall(res.to_data())
+            return
+    elif response.status_code == 420:
+        res.set_status(400,"Bad Request")
+        res.text("not ready")
+        handler.request.sendall(res.to_data())
+        return
+    else:
+        res.set_status(400,"Bad Request")
+        res.text("failed")
+        handler.request.sendall(res.to_data())
+        return
+
+def getThumbnail(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/set-thumbnail.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def putThumbnail(request, handler):
+    pass
