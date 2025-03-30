@@ -1068,16 +1068,9 @@ def postVideo(request, handler):
     items["id"] = videoID
 
     duration = videoDuration(videoURL)
-    if duration > 60:
-        res.set_status(400,"Bad Request")
-        res.text("failed")
-        handler.request.sendall(res.to_data())
-        return
-    else:
-        extractAudio(videoURL, audioURL)
-        
+    if duration <= 60:
+        extractAudio(videoURL, audioURL)   
         load_dotenv()
-        #apiKey = os.getenv("API_Token")
         with open(audioURL, "rb") as f:
             headers = {}
             headers["Authorization"] = "Bearer " + os.getenv("API_Token")
@@ -1091,8 +1084,6 @@ def postVideo(request, handler):
         
         transcriptID = response.json().get("unique_id")
         items["transcription_id"] = transcriptID
-
-    #transcriptID = uploadTrans(audioURL, apiKey)
 
     video_collection.insert_one(items)
     d = {}
