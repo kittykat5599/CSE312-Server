@@ -53,7 +53,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
         self.router.add_route("GET", "/api/transcriptions/", getTranscript, False)
 
-        self.router.add_route("GET", "/videotube/set-thumbnail", getThumbnail, True)
+        self.router.add_route("GET", "/videotube/set-thumbnail", getThumbnail, False)
         self.router.add_route("PUT", "/api/thumbnails/", putThumbnail, False)
 
 
