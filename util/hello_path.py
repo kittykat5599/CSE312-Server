@@ -10,7 +10,6 @@ import hashlib
 from dotenv import load_dotenv
 import os
 from util.multipart import *
-import ffmpeg
 
 state = ""
 # This path is provided as an example of how to use the router
@@ -172,6 +171,7 @@ def postC(request, handler):
         }
     chat_collection.insert_one(auth_mess)
     res.set_status(200,"OK") 
+    res.text("pass")
     handler.request.sendall(res.to_data())
 
 def deleteC(request, handler):
@@ -199,6 +199,7 @@ def deleteC(request, handler):
             if (auth) == chat["author"]:
                 chat_collection.delete_one(d)
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
             else:
@@ -223,6 +224,7 @@ def deleteC(request, handler):
         if (request.cookies["session"]) == chat["author"]:
             chat_collection.delete_one(d)
             res.set_status(200,"OK")
+            res.text("pass")
             handler.request.sendall(res.to_data())
             return
         else:
@@ -265,6 +267,7 @@ def patchC(request, handler):
             if (auth) == chat["author"]:
                 chat_collection.update_one(d,{"$set":c})
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
             else:
@@ -294,6 +297,7 @@ def patchC(request, handler):
         if (request.cookies["session"]) == chat["author"]:
             chat_collection.update_one(d,{"$set":c})
             res.set_status(200,"OK")
+            res.text("pass")
             handler.request.sendall(res.to_data())
             return
         else:
@@ -329,6 +333,7 @@ def nicknamePatch(request, handler):
             if new_nickname:
                 session_collection.update_one(d,{"$set":c}, upsert = True)
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
                 
@@ -354,6 +359,7 @@ def nicknamePatch(request, handler):
         if new_nickname:
             session_collection.update_one(d,{"$set":c}, upsert = True)
             res.set_status(200,"OK")
+            res.text("pass")
             handler.request.sendall(res.to_data())
             return
             
@@ -405,6 +411,7 @@ def patchR(request, handler):
             if react is None:
                 reaction_collection.insert_one(c)
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
 
@@ -434,6 +441,7 @@ def patchR(request, handler):
             if react is None:
                 reaction_collection.insert_one(c)
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
 
@@ -480,6 +488,7 @@ def deleteR(request, handler):
                 if react is not None:
                     reaction_collection.delete_one(c)
                     res.set_status(200,"OK")
+                    res.text("pass")
                     handler.request.sendall(res.to_data())
                     return
                 else:
@@ -512,6 +521,7 @@ def deleteR(request, handler):
             if react is not None:
                 reaction_collection.delete_one(c)
                 res.set_status(200,"OK")
+                res.text("pass")
                 handler.request.sendall(res.to_data())
                 return
             else:
@@ -618,6 +628,7 @@ def registration(request,handler):
     user_pass["id"] = str(uuid.uuid4())
     userPass_collection.insert_one(user_pass)
     res.set_status(200,"OK")
+    res.text("pass")
     handler.request.sendall(res.to_data())
     return
 
@@ -669,6 +680,7 @@ def postLog(request, handler):
         chat_collection.update_many(c,{"$set":b})
 
     res.set_status(200,"OK")
+    res.text("pass")
     handler.request.sendall(res.to_data())
     return
 
@@ -686,6 +698,7 @@ def logout(request, handler):
         cookie["auth_token"] = auth_token + ";Max-Age=0;HttpOnly" 
         res.cookies(cookie)
         res.set_status(200,"OK")
+        res.text("pass")
         handler.request.sendall(res.to_data())
         return
     else:
@@ -720,6 +733,7 @@ def me(request, handler):
                         d["id"] = userID
                         d["username"] = user
                         res.set_status(200,"OK")
+                        res.text("pass")
                         res.json(d)
                         handler.request.sendall(res.to_data())
                         return 
@@ -727,6 +741,7 @@ def me(request, handler):
                         d["id"] = userID
                         d["username"] = user
                         res.set_status(200,"OK")
+                        res.text("pass")
                         res.json(d)
                         handler.request.sendall(res.to_data())
                         return 
@@ -734,6 +749,7 @@ def me(request, handler):
                     d["id"] = userID
                     d["username"] = user
                     res.set_status(200,"OK")
+                    res.text("pass")
                     res.json(d)
                     handler.request.sendall(res.to_data())
                     return
@@ -771,13 +787,15 @@ def userSearch(request, handler):
         result = {}
         result["users"] = []
         res.json(result)
-        res.set_status(200,"OK")        
+        res.set_status(200,"OK")
+        res.text("pass")
         handler.request.sendall(res.to_data())
         return
     test = list(userPass_collection.find({"username":{"$regex":f"{searchUser}", "$options": ""}},{"_id": 0, "id": 1, "username": 1}))
     result = {}
     result["users"] = test
     res.set_status(200,"OK")
+    res.text("pass")
     res.json(result)
     handler.request.sendall(res.to_data())
     return 
@@ -822,6 +840,7 @@ def postSetting(request, handler):
         userPass_collection.update_one(c,{"$set":b})
 
         res.set_status(200,"OK")
+        res.text("pass")
         handler.request.sendall(res.to_data())
         return
     valid = validate_password(given_password)
@@ -840,6 +859,7 @@ def postSetting(request, handler):
         userPass_collection.update_one(c,{"$set":b})
 
     res.set_status(200,"OK")
+    res.text("pass")
     handler.request.sendall(res.to_data())
     return
 
@@ -1006,11 +1026,19 @@ def avatar_change(request, handler):
     auth = auth.get("username")
     s = {}
     s["author"] = auth
+    '''checkSess = session_collection.find_one(s)
+    if checkSess is None:
+        c = {}
+        c["nickname"] = auth
+        c["author"] = auth
+        c["imageURL"] = profilePic
+        session_collection.insert_one(c)'''
     f = {}
     f["imageURL"] = profilePic
     session_collection.update_one(s,{"$set":f})
 
     res.set_status(200,"OK")
+    res.text("pass")
     handler.request.sendall(res.to_data())
     return
 
@@ -1033,52 +1061,10 @@ def postVideo(request, handler):
     video = parse.parts[2].content
     videoID = str(uuid.uuid4())
     videoURL = "public/videos/" + videoID + ".mp4"
-    audioURL = "public/audio/" + videoID + ".mp3"
 
     with open(videoURL, "wb") as file:
         file.write(video)
-    
-    frames = int(ffmpeg.probe(videoURL)["streams"][0]["nb_frames"])
-    
-    frametimes = [0, round(frames*0.25), round(frames*0.5), round(frames*0.75), frames-1]
-    
-    thumbnailURL = "public/imgs/thumbnails"
-    NSAME = []
-    NSAME.append(f"{thumbnailURL}/{videoID}-1.jpg")
-    NSAME.append(f"{thumbnailURL}/{videoID}-2.jpg")
-    NSAME.append(f"{thumbnailURL}/{videoID}-3.jpg")
-    NSAME.append(f"{thumbnailURL}/{videoID}-4.jpg")
-    NSAME.append(f"{thumbnailURL}/{videoID}-5.jpg")
 
-    
-    (
-        ffmpeg
-        .input(videoURL)
-        .output(f"{thumbnailURL}/{videoID}-%d.jpg", vf=f"select='eq(n\,{frametimes[0]})+eq(n\,{frametimes[1]})+eq(n\,{frametimes[2]})+eq(n\,{frametimes[3]})+eq(n\,{frametimes[4]})'",vsync=0)
-        .run()
-    ) 
-    print(videoID)
-    print("aasdasd")
-    ffmpeg.input(videoURL).output(f"public/videos/{videoID}-256x144.m3u8",
-                                  hls_list_size = 0,
-                                  hls_time = 3,
-                                  vf="scale='256:144'").run()
-    
-    ffmpeg.input(videoURL).output(f"public/videos/{videoID}-854x480.m3u8",
-                                  hls_list_size = 0,
-                                  hls_time = 3,
-                                  vf="scale='854:480'").run()
-    w = (f"#EXTM3U\n"
-             f"#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=256x144\n"
-             f"{videoID}-256x144.m3u8\n"
-             f"#EXT-X-STREAM-INF:BANDWIDTH=2500000,RESOLUTION=854x480\n"
-             f"{videoID}-854x480.m3u8")
-    print("shfghdfvbcvbncghsdf")
-    hlsURL = f"public/videos/{videoID}-master.m3u8"
-    with open(hlsURL, "w") as f:
-        f.write(w)
-    print("sdfgsfghcvbnfghjtyuirtywerqwefsdgvzxcvzdfgsdfh")
-    
     items = {}
     items["author_id"] = userID
     items["title"] = str(title)
@@ -1086,76 +1072,33 @@ def postVideo(request, handler):
     items["video_path"] = videoURL
     items["created_at"] = datetime.datetime.now()
     items["id"] = videoID
-    items["thumbnails"] = NSAME
-    items["thumbnailURL"] = NSAME[0]
-    items["hls_path"] = hlsURL
+    video_collection.insert_one(items)
 
-    duration = videoDuration(videoURL)
-    if duration > 60:
-        video_collection.insert_one(items)
-        d = {}
-        d["id"] = videoID
-        res.set_status(200,"OK")
-        res.json(d)
-        handler.request.sendall(res.to_data())
-        return
-    else:
-        extractAudio(videoURL, audioURL)
-        load_dotenv()
-        with open(audioURL, "rb") as f:
-            headers = {}
-            headers["Authorization"] = "Bearer " + os.getenv("API_Token")
-            response = requests.post("https://transcription-api.nico.engineer/transcribe", files={"file": f}, headers=headers)
-        if response.status_code != 200:
-            res.set_status(400,"Bad Request")
-            res.text("failed")
-            handler.request.sendall(res.to_data())
-            return
-        
-        transcriptID = response.json().get("unique_id")
-        items["transcription_id"] = transcriptID
-        video_collection.insert_one(items)
-        d = {}
-        d["id"] = videoID
-        res.set_status(200,"OK")
-        res.json(d)
-        handler.request.sendall(res.to_data())
-        print("why")
-        return
-
+    d = {}
+    d["id"] = videoID
+    res.set_status(200,"OK")
+    res.text("pass")
+    res.json(d)
+    handler.request.sendall(res.to_data())
+    return
 
 def getAllVideo(request, handler):
     res = Response()
     vid = []
     coll = video_collection.find()
     for item in coll:
-        check = item.get("transcription_id")
-        if check is not None:
-            items = {}
-            items["author_id"] = item["author_id"]
-            items["title"] = item["title"]
-            items["description"] = item["description"]
-            items["video_path"] = item["video_path"]
-            items["created_at"] = str(item["created_at"])
-            items["id"] = item["id"]
-            items["thumbnails"] = item["thumbnails"]
-            items["thumbnailURL"] = item["thumbnailURL"]
-            items["transcription_id"] = item["transcription_id"]
-            vid.append(items)
-        else:
-            items = {}
-            items["author_id"] = item["author_id"]
-            items["title"] = item["title"]
-            items["description"] = item["description"]
-            items["video_path"] = item["video_path"]
-            items["created_at"] = str(item["created_at"])
-            items["id"] = item["id"]
-            items["thumbnails"] = item["thumbnails"]
-            items["thumbnailURL"] = item["thumbnailURL"]
-            vid.append(items)
+        items = {}
+        items["author_id"] = item["author_id"]
+        items["title"] = item["title"]
+        items["description"] = item["description"]
+        items["video_path"] = item["video_path"]
+        items["created_at"] = str(item["created_at"])
+        items["id"] = item["id"]
+        vid.append(items)
     d = {}
     d["videos"] = vid
     res.set_status(200,"OK")
+    res.text("pass")
     res.json(d)
     handler.request.sendall(res.to_data())
     return
@@ -1167,129 +1110,18 @@ def getSingleVideo(request, handler):
     d["id"] = videoID
     coll = video_collection.find_one(d)
     items = {}
-    if coll is  None:
-        res.set_status(404, "Not Found")
-        res.text("failed")
-        handler.request.sendall(res.to_data())
-        return
-    check = coll.get("transcription_id")
-    if check is not None:
+    if coll is not None:
         items["author_id"] = coll["author_id"]
         items["title"] = coll["title"]
         items["description"] = coll["description"]
         items["video_path"] = coll["video_path"]
         items["created_at"] = str(coll["created_at"])
         items["id"] = coll["id"]
-        items["thumbnails"] = coll["thumbnails"]
-        items["thumbnailURL"] = coll["thumbnailURL"]
-        items["hls_path"] = coll["hls_path"]
-        items["transcription_id"] = coll["transcription_id"]
-    else:
-        items["author_id"] = coll["author_id"]
-        items["title"] = coll["title"]
-        items["description"] = coll["description"]
-        items["video_path"] = coll["video_path"]
-        items["created_at"] = str(coll["created_at"])
-        items["id"] = coll["id"]
-        items["thumbnails"] = coll["thumbnails"]
-        items["thumbnailURL"] = coll["thumbnailURL"]
-        items["hls_path"] = coll["hls_path"]
     a = {}
     a["video"] = items
     res.set_status(200,"OK")
+    res.text("pass")
     res.json(a)
     handler.request.sendall(res.to_data())
     return
 
-def videoDuration(video_path):
-    output = os.popen(f"ffprobe -v error -show_entries format=duration -of json {video_path}").read()
-    duration = json.loads(output)["format"]["duration"]
-    #duration = ffmpeg.probe(video_path)["format"]["duration"]
-    return float(duration)
-
-def extractAudio(video_path, audio_path):
-    os.system(f"ffmpeg -i {video_path} -f mp3 {audio_path}")
-
-
-def getTranscript(request, handler):
-    res = Response()
-    videoID = request.path.split("/")[-1]
-    d = {}
-    d["id"] = videoID
-    video = video_collection.find_one(d)
-    if video is None:
-        res.set_status(404, "Not Found")
-        res.text("failed")
-        handler.request.sendall(res.to_data())
-        return
-    trans = video.get("transcription_id")
-    if trans is None:
-        res.set_status(404, "Not Found")
-        res.text("failed")
-        handler.request.sendall(res.to_data())
-        return
-    headers = {}
-    load_dotenv()
-    headers["Authorization"] = "Bearer " + os.getenv("API_Token")
-    response = requests.get(f"https://transcription-api.nico.engineer/transcriptions/{trans}", headers=headers)
-    if response.status_code == 200:
-        data = json.loads(response.text)
-        s3_url = data["s3_url"]
-        if not s3_url:
-            res.set_status(400,"Bad Request")
-            res.text("failed")
-            handler.request.sendall(res.to_data())
-            return
-        else:
-            res.set_status(200, "OK")
-            trans = requests.get(s3_url).content
-            res.bytes(trans)
-            handler.request.sendall(res.to_data())
-            return
-    elif response.status_code == 420:
-        res.set_status(400,"Bad Request")
-        res.text("not ready")
-        handler.request.sendall(res.to_data())
-        return
-    else:
-        res.set_status(400,"Bad Request")
-        res.text("failed")
-        handler.request.sendall(res.to_data())
-        return
-
-def getThumbnail(request, handler):
-    with open("public/layout/layout.html","r") as layout:
-        layoutF = layout.read()
-        with open("public/set-thumbnail.html","r") as index:
-            indexF = index.read()
-            page=layoutF.replace("{{content}}", indexF)
-            res = Response()
-            res.text(page)
-            head={}
-            head["Content-Type"] = "text/html; charset=utf-8"
-            head["X-Content-Type-Options"] = "nosniff"
-            res.headers(head)
-            handler.request.sendall(res.to_data())
-
-def putThumbnail(request, handler):
-    res = Response()
-    videoID = request.path.split("/")[-1]
-    body = json.loads(request.body)
-    new_thumbnail = body.get("thumbnailURL")
-     
-    if not new_thumbnail:
-        res.set_status(400, "Bad Request")
-        res.text("failed")
-        handler.request.sendall(res.to_data())
-        return
-    id = {}
-    id["id"] = videoID
-    thumb = {}
-    thumb["thumbnailURL"] = new_thumbnail
-    video_collection.update_one(id, {"$set":thumb})
-
-    res.set_status(200, "OK")
-    d = {}
-    d["message"] = "updated"
-    res.json(d)
-    handler.request.sendall(res.to_data())
