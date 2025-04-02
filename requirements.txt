@@ -5,5 +5,5 @@ dotenv
 ffmpeg-python
 nodejs
 npm
-base64
-hashlib
+#base64
+#hashlib
