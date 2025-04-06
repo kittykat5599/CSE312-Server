@@ -55,6 +55,14 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
         #self.router.add_route("GET", "/videotube/set-thumbnail", getThumbnail, False)
         #self.router.add_route("PUT", "/api/thumbnails/", putThumbnail, False)
+        
+        self.router.add_route("GET", "/test-websocket", websocket_page, True)
+        self.router.add_route("GET", "/drawing-board", drawing_page, True)
+        self.router.add_route("GET", "/direct-messaging", message_page, True)
+        self.router.add_route("GET", "/video-call", video_page, True)
+        self.router.add_route("GET", "/video-call/", videoroom_page, False)
+
+        self.router.add_route("GET", "/websocket", websocket_handshake, False)
 
 
 
@@ -88,9 +96,9 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 def main():
     host = "0.0.0.0"
     port = 8080
-    socketserver.TCPServer.allow_reuse_address = True
+    socketserver.ThreadingTCPServer.allow_reuse_address = True
 
-    server = socketserver.TCPServer((host, port), MyTCPHandler)
+    server = socketserver.ThreadingTCPServer((host, port), MyTCPHandler)
 
     print("Listening on port " + str(port))
     server.serve_forever()

@@ -21,6 +21,7 @@ reaction_collection = db["reactions"]
 userPass_collection = db["password"]
 userAuth_collection = db["auth_token"]
 video_collection = db["videos"]
+drawing_collection = db["drawing"]
 
 '''
 for mess in reaction_collection.find({}):

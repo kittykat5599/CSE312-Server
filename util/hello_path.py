@@ -1,6 +1,6 @@
 import datetime
 from util.response import Response
-from util.database import chat_collection, session_collection, reaction_collection, userPass_collection, userAuth_collection, video_collection
+from util.database import chat_collection, session_collection, reaction_collection, userPass_collection, userAuth_collection, video_collection, drawing_collection
 import uuid
 import json
 import requests
@@ -10,6 +10,7 @@ import hashlib
 from dotenv import load_dotenv
 import os
 from util.multipart import *
+from util.websockets import compute_accept, generate_ws_frame, parse_ws_frame
 
 state = ""
 # This path is provided as an example of how to use the router
@@ -1125,3 +1126,174 @@ def getSingleVideo(request, handler):
     handler.request.sendall(res.to_data())
     return
 
+def websocket_page(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/test-websocket.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def drawing_page(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/drawing-board.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def message_page(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/direct-messaging.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def video_page(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/video-call.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+def videoroom_page(request, handler):
+    with open("public/layout/layout.html","r") as layout:
+        layoutF = layout.read()
+        with open("public/video-call-room.html","r") as index:
+            indexF = index.read()
+            page=layoutF.replace("{{content}}", indexF)
+            res = Response()
+            res.text(page)
+            head={}
+            head["Content-Type"] = "text/html; charset=utf-8"
+            head["X-Content-Type-Options"] = "nosniff"
+            res.headers(head)
+            handler.request.sendall(res.to_data())
+
+dict = {}
+def websocket_handshake(request, handler):
+    res = Response()
+    auth_token = request.cookies["auth_token"]
+    hash_auth = hashlib.sha256(auth_token.encode()).hexdigest()
+    i = {}
+    i["auth_token"] = hash_auth
+    userID = userAuth_collection.find_one(i).get("id")
+    filter = {}
+    filter["id"] = userID
+    auth = userPass_collection.find_one(filter).get("username")
+    dict[auth] = handler
+    webSocketKey = request.headers["Sec-WebSocket-Key"]
+    res.set_status(101,"Switching Protocols")
+    d = {}
+    d["Upgrade"] = "websocket"
+    d["Connection"] = "Upgrade"
+    d["Sec-WebSocket-Accept"] = compute_accept(webSocketKey)
+
+    res.headers(d)
+    handler.request.sendall(res.to_data())
+    
+    frames = drawing_collection.find()
+    frameData = []
+    for item in frames:
+        t = {}
+        t["startX"] = item["startX"]
+        t["startY"] = item["startY"]
+        t["endX"] = item["endX"]
+        t["endY"] = item["endY"]
+        t["color"] = item["color"]
+        frameData.append(t)
+    s = {}
+    s["messageType"]="init_strokes"
+    s["strokes"] = frameData
+    jencoded = json.dumps(s).encode("utf-8")
+    generated = generate_ws_frame(jencoded)
+    for user in dict:
+        dict[user].request.sendall(generated)
+
+    userlist = []
+    for u in dict:
+        p = {}
+        p["username"] = u
+        userlist.append(p)
+    mess = {}
+    mess["messageType"] = "active_users_list"
+    mess["users"] = userlist
+    jencoded = json.dumps(mess).encode("utf-8")
+    generated = generate_ws_frame(jencoded)
+    for user in dict:
+        dict[user].request.sendall(generated)
+
+    while True:
+        data = handler.request.recv(2048)
+        payload = parse_ws_frame(data).payload
+        payloadLen = parse_ws_frame(data).payload_length
+        actualLen = len(payload)
+        message = data
+
+        while (payloadLen != actualLen):
+            data = handler.request.recv(2048)
+            actualLen += len(data)
+            message += data
+
+        parseMessage = parse_ws_frame(message)
+
+        if (parseMessage.opcode == 8):
+            dict.pop(auth)
+            userlist = []
+            for u in dict:
+                p = {}
+                p["username"] = u
+                userlist.append(p)
+            mess = {}
+            mess["messageType"] = "active_users_list"
+            mess["users"] = userlist
+            jencoded = json.dumps(mess).encode("utf-8")
+            generated = generate_ws_frame(jencoded)
+            for user in dict:
+                dict[user].request.sendall(generated)
+            break
+        getting_payload = parseMessage.payload
+        payload = json.loads(getting_payload.decode())
+        messageType = payload["messageType"]
+
+        if (messageType == "echo_client"):
+            message = payload["text"]
+            send = {}
+            send["messageType"] = "echo_server"
+            send["text"] = message
+            
+            jencoded = json.dumps(send).encode("utf-8")
+            generated = generate_ws_frame(jencoded)
+            handler.request.sendall(generated)
+        elif(messageType == "drawing"):
+            jencoded = json.dumps(payload).encode("utf-8")
+            generated = generate_ws_frame(jencoded)
+            for user in dict:
+                dict[user].request.sendall(generated)
+            drawing_collection.insert_one(payload)

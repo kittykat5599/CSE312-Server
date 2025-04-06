@@ -20,12 +20,12 @@ class WebSocketFrame:
         self.payload = payload
 
 def parse_ws_frame(WebsocketBytes):
-    fin_bit = (WebsocketBytes[0] >> 7) & 1
+    fin_bit = (WebsocketBytes[0] >> 7)
     opcode = WebsocketBytes[0] & 0x0F
-    mask_bit = (WebsocketBytes[1] >> 7) & 1
+    mask_bit = (WebsocketBytes[1] >> 7)
     payload_len = WebsocketBytes[1] & 0x7F
-    index = 2
     
+    index = 2
     if payload_len == 126:
         payload_length = int.from_bytes(WebsocketBytes[index:index + 2], 'big')
         index += 2
@@ -43,19 +43,19 @@ def parse_ws_frame(WebsocketBytes):
     
     payload = WebsocketBytes[index:index + payload_length]
     
-    if mask_bit and mask_key:
+    if mask_key:
         unmasked_payload = []
         for i, b in enumerate(payload):
             part = b ^ mask_key[i % 4]
             unmasked_payload.append(part)
-        payload = bytes(unmasked_payload)
+        payload = bytes(unmasked_payload) 
     
     return WebSocketFrame(fin_bit, opcode, payload_length, payload)
 
 def generate_ws_frame(WebsocketBytes):
     fin_bit = 1
     opcode = 0x1 
-    first_byte = fin_bit * 128 + opcode
+    first_byte = (fin_bit << 7) + opcode
     payload_length = len(WebsocketBytes)
     
     if payload_length <= 125:
@@ -71,6 +71,7 @@ def generate_ws_frame(WebsocketBytes):
     frame = header + WebsocketBytes
     return frame
 
+
 def test1():
     key = "MXYIMtVbjLyreuG0Q1q3wg=="
     expected = "5r3mRvWZxmTQ64GVf03iCXKTmMc="
@@ -79,7 +80,6 @@ def test1():
     print(actual)   
     assert expected == actual
     
-
 if __name__ == '__main__':
     test1()
 
