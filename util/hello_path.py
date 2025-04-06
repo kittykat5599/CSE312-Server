@@ -1196,7 +1196,7 @@ def videoroom_page(request, handler):
             res.headers(head)
             handler.request.sendall(res.to_data())
 
-dict = {}
+connectionDict = {}
 def websocket_handshake(request, handler):
     res = Response()
     auth_token = request.cookies["auth_token"]
@@ -1207,7 +1207,7 @@ def websocket_handshake(request, handler):
     filter = {}
     filter["id"] = userID
     auth = userPass_collection.find_one(filter).get("username")
-    dict[auth] = handler
+    connectionDict[auth] = handler
     webSocketKey = request.headers["Sec-WebSocket-Key"]
     res.set_status(101,"Switching Protocols")
     d = {}
@@ -1218,6 +1218,7 @@ def websocket_handshake(request, handler):
     res.headers(d)
     handler.request.sendall(res.to_data())
     
+    #init starts
     frames = drawing_collection.find()
     frameData = []
     for item in frames:
@@ -1233,11 +1234,12 @@ def websocket_handshake(request, handler):
     s["strokes"] = frameData
     jencoded = json.dumps(s).encode("utf-8")
     generated = generate_ws_frame(jencoded)
-    for user in dict:
-        dict[user].request.sendall(generated)
+    for user in connectionDict:
+        connectionDict[user].request.sendall(generated)
+    #init ends
 
     userlist = []
-    for u in dict:
+    for u in connectionDict:
         p = {}
         p["username"] = u
         userlist.append(p)
@@ -1246,8 +1248,8 @@ def websocket_handshake(request, handler):
     mess["users"] = userlist
     jencoded = json.dumps(mess).encode("utf-8")
     generated = generate_ws_frame(jencoded)
-    for user in dict:
-        dict[user].request.sendall(generated)
+    for user in connectionDict:
+        connectionDict[user].request.sendall(generated)
 
     while True:
         data = handler.request.recv(2048)
@@ -1264,9 +1266,9 @@ def websocket_handshake(request, handler):
         parseMessage = parse_ws_frame(message)
 
         if (parseMessage.opcode == 8):
-            dict.pop(auth)
+            connectionDict.pop(auth)
             userlist = []
-            for u in dict:
+            for u in connectionDict:
                 p = {}
                 p["username"] = u
                 userlist.append(p)
@@ -1275,8 +1277,8 @@ def websocket_handshake(request, handler):
             mess["users"] = userlist
             jencoded = json.dumps(mess).encode("utf-8")
             generated = generate_ws_frame(jencoded)
-            for user in dict:
-                dict[user].request.sendall(generated)
+            for user in connectionDict:
+                connectionDict[user].request.sendall(generated)
             break
         getting_payload = parseMessage.payload
         payload = json.loads(getting_payload.decode())
@@ -1294,6 +1296,6 @@ def websocket_handshake(request, handler):
         elif(messageType == "drawing"):
             jencoded = json.dumps(payload).encode("utf-8")
             generated = generate_ws_frame(jencoded)
-            for user in dict:
-                dict[user].request.sendall(generated)
+            for user in connectionDict:
+                connectionDict[user].request.sendall(generated)
             drawing_collection.insert_one(payload)
