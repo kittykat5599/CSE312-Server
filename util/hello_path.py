@@ -1260,27 +1260,23 @@ def websocket_handshake(request, handler):
     while True:
         data = handler.request.recv(2048)
         if not data:
-            break  # client disconnected
+            break  
 
         recv_buffer += data
 
         while True:
             
             if len(recv_buffer) < 2:
-                break  # not enough for header
+                break  
             parse = parse_ws_frame(recv_buffer)
             if len(recv_buffer) < parse.totalSize:
                 break
 
             recv_buffer = recv_buffer[parse.totalSize:]
 
-    
             
-            #I think you can just do parse_ws_frame(data) and get the buffer that way
-            #Pretty sure you can parse a partial message
-
-            # Now handle opcodes and fragmentation
-            if parse.opcode == 8:  # Close
+            # Close
+            if parse.opcode == 8:  
                 connectionDict.pop(auth)
                 for call_id in list(callDict.keys()):
                     new_participants = []
