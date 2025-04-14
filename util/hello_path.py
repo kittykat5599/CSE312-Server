@@ -1198,6 +1198,7 @@ def videoroom_page(request, handler):
 
 connectionDict = {}
 dmDict = {}
+callDict = {}
 def websocket_handshake(request, handler):
     res = Response()
     auth_token = request.cookies["auth_token"]
@@ -1252,132 +1253,275 @@ def websocket_handshake(request, handler):
     for user in connectionDict:
         connectionDict[user].request.sendall(generated)
 
+    recv_buffer = b""
+    partial_message = b""
+    expecting_continuation = False
+
     while True:
         data = handler.request.recv(2048)
-        payload = parse_ws_frame(data).payload
-        payloadLen = parse_ws_frame(data).payload_length
-        actualLen = len(payload)
-        message = data
+        if not data:
+            break  # client disconnected
 
-        while (payloadLen != actualLen):
-            data = handler.request.recv(2048)
-            actualLen += len(data)
-            message += data
+        recv_buffer += data
 
-        parseMessage = parse_ws_frame(message)
-
-        if (parseMessage.opcode == 8):
-            connectionDict.pop(auth)
-            userlist = []
-            for u in connectionDict:
-                p = {}
-                p["username"] = u
-                userlist.append(p)
-            mess = {}
-            mess["messageType"] = "active_users_list"
-            mess["users"] = userlist
-            jencoded = json.dumps(mess).encode("utf-8")
-            generated = generate_ws_frame(jencoded)
-            for user in connectionDict:
-                connectionDict[user].request.sendall(generated)
-            break
-        getting_payload = parseMessage.payload
-        payload = json.loads(getting_payload.decode())
-        messageType = payload["messageType"]
-
-        if (messageType == "echo_client"):
-            message = payload["text"]
-            send = {}
-            send["messageType"] = "echo_server"
-            send["text"] = message
+        while True:
             
-            jencoded = json.dumps(send).encode("utf-8")
-            generated = generate_ws_frame(jencoded)
-            handler.request.sendall(generated)
+            if len(recv_buffer) < 2:
+                break  # not enough for header
+            parse = parse_ws_frame(recv_buffer)
+            if len(recv_buffer) < parse.totalSize:
+                break
 
-        elif(messageType == "drawing"):
-            jencoded = json.dumps(payload).encode("utf-8")
-            generated = generate_ws_frame(jencoded)
-            for user in connectionDict:
-                connectionDict[user].request.sendall(generated)
-            drawing_collection.insert_one(payload)
-        
-        #ao2
-        elif(messageType == "get_all_users"):
-            users = []
-            all_users = userPass_collection.find()
-            for user in all_users:
-                userDict = {}
-                userDict["username"] = user["username"]
-                users.append(userDict)
-            response = {}
-            response["messageType"] = "all_users_list"
-            response["users"] = users
-            jencoded = json.dumps(response).encode("utf-8")
-            generated = generate_ws_frame(jencoded)
-            handler.request.sendall(generated)
-        
-        elif(messageType == "select_user"):
-            target_user = payload["targetUser"]
-            filter1 = {}
-            filter1["fromUser"] = auth
-            filter1["toUser"] = target_user
-            filter2 = {}
-            filter2["fromUser"] = target_user
-            filter2["toUser"] = auth
-            orFilters = {}
-            orFilters["$or"] = [filter1, filter2]
-            dm_mess = directMsg_collection.find(orFilters).sort("sendTime",1)
-            messages = list(dm_mess)
-            history = []
-            for m in messages:
-                messHistory = {}
-                messHistory["messageType"] = "direct_message"
-                messHistory["fromUser"] = m["fromUser"]
-                messHistory["text"] = m["text"]
-                history.append(messHistory)
-            response = {}
-            response["messageType"] = "message_history"
-            response["messages"] = history
-            dmDict[auth] = target_user
-            jencoded = json.dumps(response).encode("utf-8")
-            generated = generate_ws_frame(jencoded)
-            handler.request.sendall(generated)
-        
-        elif(messageType == "direct_message"):
-            toUser = payload["targetUser"]
-            text = payload["text"]
-            dm_info = {}
-            dm_info["fromUser"] = auth
-            dm_info["toUser"] = toUser
-            dm_info["text"] = text
-            dm_info["sendTime"] = datetime.datetime.now(datetime.timezone.utc)
-            directMsg_collection.insert_one(dm_info)
-            response = {}
-            response["messageType"] = "direct_message"
-            response["fromUser"] = auth
-            response["text"] = text
-            jencoded = json.dumps(response).encode("utf-8")
-            generated = generate_ws_frame(jencoded)
-            if (auth in connectionDict):
-                connectionDict[auth].request.sendall(generated)
-            if ((toUser in connectionDict) and (dmDict[toUser] == auth)):
-                connectionDict[toUser].request.sendall(generated)
+            recv_buffer = recv_buffer[parse.totalSize:]
 
+    
+            
+            #I think you can just do parse_ws_frame(data) and get the buffer that way
+            #Pretty sure you can parse a partial message
 
-        #ao3
-        elif(messageType == "get_calls"):
-            calls = list(videoCall_collection.find())
-            response = {}
-            response["messageType"] = "call_list"
-            response["calls"] = calls
-            jencoded = json.dumps(response).encode("utf-8")
-            generated = generate_ws_frame(jencoded)
-            handler.request.sendall(generated)
-        
-        elif(messageType == "join_call"):
-            pass
+            # Now handle opcodes and fragmentation
+            if parse.opcode == 8:  # Close
+                connectionDict.pop(auth)
+                for call_id in list(callDict.keys()):
+                    new_participants = []
+                    for people in callDict[call_id]:
+                        if people["username"] == auth:
+                            mess = {}
+                            mess["messageType"] = "user_left"
+                            mess["socketId"] = people["socketId"]
+                            jencoded = json.dumps(mess).encode("utf-8")
+                            generated = generate_ws_frame(jencoded)
+                            for others in callDict[call_id]:
+                                if others["username"] != auth:
+                                    others["handler"].request.sendall(generated)
+                        else:
+                            new_participants.append(people)
+                    callDict[call_id] = new_participants
+                
+                userlist = []
+                for u in connectionDict:
+                    p = {}
+                    p["username"] = u
+                    userlist.append(p)
+                mess = {}
+                mess["messageType"] = "active_users_list"
+                mess["users"] = userlist
+                jencoded = json.dumps(mess).encode("utf-8")
+                generated = generate_ws_frame(jencoded)
+                for user in connectionDict:
+                    connectionDict[user].request.sendall(generated)
+                break
+
+            elif parse.opcode == 0x1 or parse.opcode == 0x2:
+                if parse.fin_bit == 1:
+                    full_payload = parse.payload
+                else:
+                    partial_message = parse.payload
+                    expecting_continuation = True
+                    continue
+
+            elif parse.opcode == 0x0:  
+                if expecting_continuation:
+                    partial_message += parse.payload
+                    if parse.fin_bit == 1:
+                        full_payload = partial_message
+                        partial_message = b""
+                        expecting_continuation = False
+                    else:
+                        continue
+                else:
+                    continue  
+
+            else:
+                continue  
+
+            # Process complete message
+            decoded = full_payload.decode("utf-8")
+            payload = json.loads(decoded)
+            messageType = payload["messageType"]
+
+            if (messageType == "echo_client"):
+                message = payload["text"]
+                send = {}
+                send["messageType"] = "echo_server"
+                send["text"] = message
+                
+                jencoded = json.dumps(send).encode("utf-8")
+                generated = generate_ws_frame(jencoded)
+                handler.request.sendall(generated)
+
+            elif(messageType == "drawing"):
+                jencoded = json.dumps(payload).encode("utf-8")
+                generated = generate_ws_frame(jencoded)
+                for user in connectionDict:
+                    connectionDict[user].request.sendall(generated)
+                drawing_collection.insert_one(payload)
+            
+            #ao2
+            elif(messageType == "get_all_users"):
+                users = []
+                all_users = userPass_collection.find()
+                for user in all_users:
+                    userDict = {}
+                    userDict["username"] = user["username"]
+                    users.append(userDict)
+                response = {}
+                response["messageType"] = "all_users_list"
+                response["users"] = users
+                jencoded = json.dumps(response).encode("utf-8")
+                generated = generate_ws_frame(jencoded)
+                handler.request.sendall(generated)
+            
+            elif(messageType == "select_user"):
+                target_user = payload["targetUser"]
+                filter1 = {}
+                filter1["fromUser"] = auth
+                filter1["toUser"] = target_user
+                filter2 = {}
+                filter2["fromUser"] = target_user
+                filter2["toUser"] = auth
+                orFilters = {}
+                orFilters["$or"] = [filter1, filter2]
+                dm_mess = directMsg_collection.find(orFilters).sort("sendTime",1)
+                messages = list(dm_mess)
+                history = []
+                for m in messages:
+                    messHistory = {}
+                    messHistory["messageType"] = "direct_message"
+                    messHistory["fromUser"] = m["fromUser"]
+                    messHistory["text"] = m["text"]
+                    history.append(messHistory)
+                response = {}
+                response["messageType"] = "message_history"
+                response["messages"] = history
+                dmDict[auth] = target_user
+                jencoded = json.dumps(response).encode("utf-8")
+                generated = generate_ws_frame(jencoded)
+                handler.request.sendall(generated)
+            
+            elif(messageType == "direct_message"):
+                toUser = payload["targetUser"]
+                text = payload["text"]
+                dm_info = {}
+                dm_info["fromUser"] = auth
+                dm_info["toUser"] = toUser
+                dm_info["text"] = text
+                dm_info["sendTime"] = datetime.datetime.now(datetime.timezone.utc)
+                directMsg_collection.insert_one(dm_info)
+                response = {}
+                response["messageType"] = "direct_message"
+                response["fromUser"] = auth
+                response["text"] = text
+                jencoded = json.dumps(response).encode("utf-8")
+                generated = generate_ws_frame(jencoded)
+                if (auth in connectionDict):
+                    connectionDict[auth].request.sendall(generated)
+                if ((toUser in connectionDict) and (dmDict[toUser] == auth)):
+                    connectionDict[toUser].request.sendall(generated)
+
+            #ao3
+            elif messageType == "get_calls":
+                calls = []
+                for call in videoCall_collection.find():
+                    roomInfo = {}
+                    roomInfo["id"] = call["id"],
+                    roomInfo["name"] = call["name"]
+                    calls.append(roomInfo)
+                response = {}
+                response["messageType"] = "call_list"
+                response["calls"] = calls
+
+                jencoded = json.dumps(response).encode("utf-8")
+                generated = generate_ws_frame(jencoded)
+                handler.request.sendall(generated)
+
+            elif messageType == "join_call":
+                call_id = payload["callId"]
+                
+                if call_id not in callDict:
+                    callDict[call_id] = []
+                socketId = str(uuid.uuid4())
+                person = {}
+                person["socketId"] = socketId
+                person["username"] = auth
+                person["handler"] = handler
+                callDict[call_id].append(person)
+   
+                filterRoom = {}
+                filterRoom["id"] = call_id
+                room = videoCall_collection.find_one(filterRoom)
+                if room:
+                    response = {}
+                    response["messageType"] = "call_info"
+                    response["name"] = room["name"]
+                    jencoded = json.dumps(response).encode("utf-8")
+                    generated = generate_ws_frame(jencoded)
+                    handler.request.sendall(generated)
+
+                existing = []
+                for participant in callDict[call_id]:
+                    if participant["username"] != auth:
+                        new_person = {}
+                        new_person["socketId"] = participant["socketId"]
+                        new_person["username"] = participant["username"]
+                        existing.append(new_person)
+                response = {}
+                response["messageType"] = "existing_participants"
+                response["participants"] = existing
+                jencoded = json.dumps(response).encode("utf-8")
+                generated = generate_ws_frame(jencoded)
+                handler.request.sendall(generated)
+
+                joined = {}
+                joined["messageType"] = "user_joined"
+                joined["socketId"] = socketId
+                joined["username"] = auth
+                jencoded = json.dumps(joined).encode("utf-8")
+                generated = generate_ws_frame(jencoded)
+                for participant in callDict[call_id]:
+                    if participant["username"] != auth:
+                        participant["handler"].request.sendall(generated)
+
+            elif messageType in ["offer", "answer", "ice_candidate"]:
+                target_socket = payload["socketId"]
+                sender_socket = None
+                senderID = None
+
+                for roomID, participants in callDict.items():
+                    for person in participants:
+                        if person["username"] == auth:
+                            sender_socket = person["socketId"]
+                            senderID = roomID
+                            break
+
+                if sender_socket and senderID:
+                    for person in callDict[senderID]:
+                        if person["socketId"] == target_socket:
+                            temp = {}
+                            temp["messageType"] = messageType
+                            temp["socketId"] = sender_socket
+                            temp["username"] = auth
+
+                            for k in payload:
+                                if k != "socketId":
+                                    temp[k] = payload[k]
+                            jencoded = json.dumps(temp).encode("utf-8")
+                            generated = generate_ws_frame(jencoded)
+                            person["handler"].request.sendall(generated)
+
+                
             
 
 def postVideoCall(request, handler):
-    pass
+    res = Response()
+    roomID = str(uuid.uuid4())
+    data = {}
+    data["name"] = json.loads(request.body).get("name")
+    data["id"] = roomID
+
+    videoCall_collection.insert_one(data)
+    
+    d = {}
+    d["id"] = str(roomID)
+    res.json(d)
+    handler.request.sendall(res.to_data())

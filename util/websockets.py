@@ -13,11 +13,12 @@ def compute_accept(WebKey):
     return acceptKey
 
 class WebSocketFrame:
-    def __init__(self, fin_bit, opcode, payload_length, payload):
+    def __init__(self, fin_bit, opcode, payload_length, payload, totalSize):
         self.fin_bit = fin_bit
         self.opcode = opcode
         self.payload_length = payload_length
         self.payload = payload
+        self.totalSize = totalSize
 
 def parse_ws_frame(WebsocketBytes):
     fin_bit = (WebsocketBytes[0] >> 7)
@@ -41,8 +42,10 @@ def parse_ws_frame(WebsocketBytes):
     else:
         mask_key = None
     
+    totalSize = index + payload_length
     payload = WebsocketBytes[index:index + payload_length]
-    
+    WebsocketBytes = WebsocketBytes[index+payload_len:]
+
     if mask_key:
         unmasked_payload = []
         for i, b in enumerate(payload):
@@ -50,7 +53,8 @@ def parse_ws_frame(WebsocketBytes):
             unmasked_payload.append(part)
         payload = bytes(unmasked_payload) 
     
-    return WebSocketFrame(fin_bit, opcode, payload_length, payload)
+    return WebSocketFrame(fin_bit, opcode, payload_length, payload, totalSize)
+
 
 def generate_ws_frame(WebsocketBytes):
     fin_bit = 1
