@@ -1,6 +1,6 @@
 import datetime
 from util.response import Response
-from util.database import chat_collection, session_collection, reaction_collection, userPass_collection, userAuth_collection, video_collection, drawing_collection
+from util.database import *
 import uuid
 import json
 import requests
@@ -1197,6 +1197,7 @@ def videoroom_page(request, handler):
             handler.request.sendall(res.to_data())
 
 connectionDict = {}
+dmDict = {}
 def websocket_handshake(request, handler):
     res = Response()
     auth_token = request.cookies["auth_token"]
@@ -1293,9 +1294,90 @@ def websocket_handshake(request, handler):
             jencoded = json.dumps(send).encode("utf-8")
             generated = generate_ws_frame(jencoded)
             handler.request.sendall(generated)
+
         elif(messageType == "drawing"):
             jencoded = json.dumps(payload).encode("utf-8")
             generated = generate_ws_frame(jencoded)
             for user in connectionDict:
                 connectionDict[user].request.sendall(generated)
             drawing_collection.insert_one(payload)
+        
+        #ao2
+        elif(messageType == "get_all_users"):
+            users = []
+            all_users = userPass_collection.find()
+            for user in all_users:
+                userDict = {}
+                userDict["username"] = user["username"]
+                users.append(userDict)
+            response = {}
+            response["messageType"] = "all_users_list"
+            response["users"] = users
+            jencoded = json.dumps(response).encode("utf-8")
+            generated = generate_ws_frame(jencoded)
+            handler.request.sendall(generated)
+        
+        elif(messageType == "select_user"):
+            target_user = payload["targetUser"]
+            filter1 = {}
+            filter1["fromUser"] = auth
+            filter1["toUser"] = target_user
+            filter2 = {}
+            filter2["fromUser"] = target_user
+            filter2["toUser"] = auth
+            orFilters = {}
+            orFilters["$or"] = [filter1, filter2]
+            dm_mess = directMsg_collection.find(orFilters).sort("sendTime",1)
+            messages = list(dm_mess)
+            history = []
+            for m in messages:
+                messHistory = {}
+                messHistory["messageType"] = "direct_message"
+                messHistory["fromUser"] = m["fromUser"]
+                messHistory["text"] = m["text"]
+                history.append(messHistory)
+            response = {}
+            response["messageType"] = "message_history"
+            response["messages"] = history
+            dmDict[auth] = target_user
+            jencoded = json.dumps(response).encode("utf-8")
+            generated = generate_ws_frame(jencoded)
+            handler.request.sendall(generated)
+        
+        elif(messageType == "direct_message"):
+            toUser = payload["targetUser"]
+            text = payload["text"]
+            dm_info = {}
+            dm_info["fromUser"] = auth
+            dm_info["toUser"] = toUser
+            dm_info["text"] = text
+            dm_info["sendTime"] = datetime.datetime.now(datetime.timezone.utc)
+            directMsg_collection.insert_one(dm_info)
+            response = {}
+            response["messageType"] = "direct_message"
+            response["fromUser"] = auth
+            response["text"] = text
+            jencoded = json.dumps(response).encode("utf-8")
+            generated = generate_ws_frame(jencoded)
+            if (auth in connectionDict):
+                connectionDict[auth].request.sendall(generated)
+            if ((toUser in connectionDict) and (dmDict[toUser] == auth)):
+                connectionDict[toUser].request.sendall(generated)
+
+
+        #ao3
+        elif(messageType == "get_calls"):
+            calls = list(videoCall_collection.find())
+            response = {}
+            response["messageType"] = "call_list"
+            response["calls"] = calls
+            jencoded = json.dumps(response).encode("utf-8")
+            generated = generate_ws_frame(jencoded)
+            handler.request.sendall(generated)
+        
+        elif(messageType == "join_call"):
+            pass
+            
+
+def postVideoCall(request, handler):
+    pass

@@ -63,7 +63,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         self.router.add_route("GET", "/video-call/", videoroom_page, False)
 
         self.router.add_route("GET", "/websocket", websocket_handshake, False)
-
+        self.router.add_route("POST", "/api/video-calls", postVideoCall, True)
 
 
 
